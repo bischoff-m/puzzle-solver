@@ -13,6 +13,7 @@ import yaml
 from gurobipy import GRB
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, to_rgba
+from matplotlib.widgets import Button, RadioButtons, Slider
 
 Cell = tuple[int, int]
 Voxel = tuple[int, int, int]
@@ -497,6 +498,84 @@ def solve_flat(board: Board, pieces: list[Piece]) -> dict[str, set[Cell]]:
     return solution
 
 
+def solve_flat_pool(
+    board: Board,
+    pieces: list[Piece],
+    *,
+    max_solutions: int = 20,
+    output_flag: int = 0,
+) -> list[dict[str, set[Cell]]]:
+    """Return up to `max_solutions` distinct flat solutions via Gurobi solution pool."""
+    board_grid = board.grid
+    board_w, board_h = 10, 7
+    board_filled = grid_to_cells(board_grid)
+    board_all = {(x, y) for y in range(board_h) for x in range(board_w)}
+    target_cells = board_all - board_filled
+
+    piece_grids = {p.name: p.grid for p in pieces}
+    placements_by_piece: dict[str, list[set[Cell]]] = {
+        name: _enumerate_flat_placements(g, board_w, board_h, board_filled)
+        for name, g in piece_grids.items()
+    }
+
+    m = gp.Model("puzzle_flat")
+    m.Params.OutputFlag = output_flag
+    m.Params.PoolSearchMode = 2
+    m.Params.PoolSolutions = max_solutions
+    m.Params.PoolGap = 0.0
+
+    xvar: dict[tuple[str, int], gp.Var] = {}
+    for name, placements in placements_by_piece.items():
+        for pi in range(len(placements)):
+            xvar[(name, pi)] = m.addVar(
+                vtype=GRB.BINARY, name=f"x[{name},{pi}]"
+            )
+
+    for name, placements in placements_by_piece.items():
+        m.addConstr(
+            gp.quicksum(xvar[(name, pi)] for pi in range(len(placements))) == 1,
+            name=f"place_once[{name}]",
+        )
+
+    for cell in sorted(target_cells):
+        m.addConstr(
+            gp.quicksum(
+                xvar[(name, pi)]
+                for name, placements in placements_by_piece.items()
+                for pi, occ in enumerate(placements)
+                if cell in occ
+            )
+            == 1,
+            name=f"cover[{cell[0]},{cell[1]}]",
+        )
+
+    m.setObjective(0.0, GRB.MINIMIZE)
+    m.optimize()
+
+    if m.Status not in (GRB.OPTIMAL, GRB.TIME_LIMIT):
+        raise RuntimeError(f"No solution found; Gurobi status={m.Status}")
+    if m.SolCount <= 0:
+        raise RuntimeError("No solutions in pool")
+
+    sols: list[dict[str, set[Cell]]] = []
+    for sn in range(min(m.SolCount, max_solutions)):
+        m.Params.SolutionNumber = sn
+        sol: dict[str, set[Cell]] = {}
+        for name, placements in placements_by_piece.items():
+            chosen: int | None = None
+            for pi in range(len(placements)):
+                if xvar[(name, pi)].Xn > 0.5:
+                    chosen = pi
+                    break
+            if chosen is None:
+                raise RuntimeError(
+                    f"Incomplete pool solution {sn} for piece {name}"
+                )
+            sol[name] = placements[chosen]
+        sols.append(sol)
+    return sols
+
+
 def print_flat_solution(board: Board, solution: dict[str, set[Cell]]) -> None:
     """Plot the flat-board solution with seaborn.
 
@@ -550,6 +629,52 @@ def print_flat_solution(board: Board, solution: dict[str, set[Cell]]) -> None:
     ax.set_title("Flat solution")
     fig.tight_layout()
     plt.show()
+
+
+def _draw_flat_solution(
+    ax: Axes, board: Board, solution: dict[str, set[Cell]]
+) -> None:
+    """Draw flat solution onto an existing Matplotlib Axes."""
+    board_grid = board.grid
+    board_filled = grid_to_cells(board_grid)
+    w, h = 10, 7
+
+    piece_items = sorted(solution.items(), key=lambda kv: kv[0])
+    piece_index: dict[str, int] = {
+        name: i + 1 for i, (name, _) in enumerate(piece_items)
+    }
+    frame_value = len(piece_items) + 1
+
+    grid_int = np.zeros((h, w), dtype=int)
+    for x, y in board_filled:
+        grid_int[y, x] = frame_value
+    for name, occ in piece_items:
+        v = piece_index[name]
+        for x, y in occ:
+            grid_int[y, x] = v
+
+    piece_colors = sns.color_palette("tab10", n_colors=max(6, len(piece_items)))
+    cmap_list: list[tuple[float, float, float] | str] = ["#ffffff"]
+    cmap_list.extend([piece_colors[i] for i in range(len(piece_items))])
+    cmap_list.append("#c0c0c0")
+    cmap = ListedColormap(cmap_list)
+
+    ax.clear()
+    sns.heatmap(
+        grid_int,
+        ax=ax,
+        cmap=cmap,
+        vmin=0,
+        vmax=frame_value,
+        cbar=False,
+        square=True,
+        linewidths=0.8,
+        linecolor="#cccccc",
+        xticklabels=False,
+        yticklabels=False,
+    )
+    ax.set_aspect("equal")
+    ax.set_title("Flat")
 
 
 def _face_map(face: Face, u: int, v: int) -> Voxel:
@@ -607,8 +732,13 @@ def _enumerate_cube_placements(
     return placements
 
 
-def solve_cube(pieces: list[Piece]) -> dict[str, tuple[Face, int]]:
-    # Boundary voxels of a 4x4x4 cube.
+def solve_cube_pool(
+    pieces: list[Piece],
+    *,
+    max_solutions: int = 20,
+    output_flag: int = 0,
+) -> list[dict[str, tuple[Face, int]]]:
+    """Return up to `max_solutions` distinct cube solutions via Gurobi solution pool."""
     boundary: set[Voxel] = set()
     for z in range(4):
         for y in range(4):
@@ -621,8 +751,29 @@ def solve_cube(pieces: list[Piece]) -> dict[str, tuple[Face, int]]:
         name: _enumerate_cube_placements(g) for name, g in piece_grids.items()
     }
 
+    # Symmetry breaking: fix the first piece to the top face with a fixed
+    # in-plane rotation to avoid counting globally rotated solutions.
+    if not pieces:
+        raise ValueError("pieces is empty")
+    first_piece_name = pieces[0].name
+    fixed_face: Face = "+Z"
+    fixed_rot = 0
+    fixed = [
+        p
+        for p in placements_by_piece[first_piece_name]
+        if p[0] == fixed_face and p[1] == fixed_rot
+    ]
+    if not fixed:
+        raise RuntimeError(
+            f"No placements for first piece {first_piece_name} on {fixed_face} with rot={fixed_rot}"
+        )
+    placements_by_piece[first_piece_name] = fixed
+
     m = gp.Model("puzzle_cube")
-    m.Params.OutputFlag = 1
+    m.Params.OutputFlag = output_flag
+    m.Params.PoolSearchMode = 2
+    m.Params.PoolSolutions = max_solutions
+    m.Params.PoolGap = 0.0
 
     xvar: dict[tuple[str, int], gp.Var] = {}
     for name, placements in placements_by_piece.items():
@@ -631,14 +782,12 @@ def solve_cube(pieces: list[Piece]) -> dict[str, tuple[Face, int]]:
                 vtype=GRB.BINARY, name=f"x[{name},{pi}]"
             )
 
-    # Each piece selects exactly one (face, rotation).
     for name, placements in placements_by_piece.items():
         m.addConstr(
             gp.quicksum(xvar[(name, pi)] for pi in range(len(placements))) == 1,
             name=f"place_once[{name}]",
         )
 
-    # Exact cover on the boundary.
     for voxel in sorted(boundary):
         m.addConstr(
             gp.quicksum(
@@ -654,39 +803,40 @@ def solve_cube(pieces: list[Piece]) -> dict[str, tuple[Face, int]]:
     m.setObjective(0.0, GRB.MINIMIZE)
     m.optimize()
 
-    if m.Status != GRB.OPTIMAL:
-        raise RuntimeError(
-            f"No optimal solution found; Gurobi status={m.Status}"
-        )
+    if m.Status not in (GRB.OPTIMAL, GRB.TIME_LIMIT):
+        raise RuntimeError(f"No solution found; Gurobi status={m.Status}")
+    if m.SolCount <= 0:
+        raise RuntimeError("No solutions in pool")
 
-    sol: dict[str, tuple[Face, int]] = {}
-    for name, placements in placements_by_piece.items():
-        for pi, (face, rot, _occ) in enumerate(placements):
-            if xvar[(name, pi)].X > 0.5:
-                sol[name] = (face, rot)
-                break
-        if name not in sol:
-            raise RuntimeError(f"Piece {name} not assigned in solution")
-    return sol
+    sols: list[dict[str, tuple[Face, int]]] = []
+    for sn in range(min(m.SolCount, max_solutions)):
+        m.Params.SolutionNumber = sn
+        sol: dict[str, tuple[Face, int]] = {}
+        for name, placements in placements_by_piece.items():
+            chosen: int | None = None
+            for pi in range(len(placements)):
+                if xvar[(name, pi)].Xn > 0.5:
+                    chosen = pi
+                    break
+            if chosen is None:
+                raise RuntimeError(
+                    f"Incomplete pool solution {sn} for piece {name}"
+                )
+            face, rot, _ = placements[chosen]
+            sol[name] = (face, rot)
+        sols.append(sol)
+    return sols
 
 
-def plot_cube_solution(
-    pieces: list[Piece], solution: dict[str, tuple[Face, int]]
+def _draw_cube_solution(
+    ax, pieces: list[Piece], solution: dict[str, tuple[Face, int]]
 ) -> None:
-    """Render a 4x4x4 cube-shell solution using Matplotlib 3D voxels.
-
-    This follows the style of Matplotlib's `ax.voxels(...)` gallery examples.
-    Each piece gets a distinct facecolor.
-    """
-    sns.set_theme(style="white")
-
-    # Map piece name -> grid
+    """Draw cube solution onto an existing 3D Axes."""
     piece_by_name: dict[str, Piece] = {p.name: p for p in pieces}
 
-    filled = np.zeros((4, 4, 4), dtype=bool)  # indexed as [x,y,z]
+    filled = np.zeros((4, 4, 4), dtype=bool)
     facecolors = np.empty((4, 4, 4), dtype=object)
 
-    # Assign colors in stable name order.
     names_sorted = sorted(solution.keys())
     palette = sns.color_palette("tab10", n_colors=max(6, len(names_sorted)))
     name_to_rgba = {
@@ -695,11 +845,7 @@ def plot_cube_solution(
     }
 
     for name in names_sorted:
-        if name not in piece_by_name:
-            raise ValueError(f"Solution references unknown piece name: {name}")
         face, rot = solution[name]
-
-        # Recompute occupied voxels for the chosen (face, rot).
         occ: set[Voxel] | None = None
         for f, r, voxels in _enumerate_cube_placements(
             piece_by_name[name].grid
@@ -711,27 +857,119 @@ def plot_cube_solution(
             raise RuntimeError(
                 f"Could not reconstruct placement for piece {name}"
             )
-
         rgba = name_to_rgba[name]
         for x, y, z in occ:
             filled[x, y, z] = True
             facecolors[x, y, z] = rgba
 
-    fig = plt.figure(figsize=(7.5, 7.5))
-    ax = fig.add_subplot(projection="3d")
+    ax.clear()
     ax.voxels(filled, facecolors=facecolors, edgecolor="#222222", linewidth=0.6)
-
-    # Keep equal aspect ratio.
     try:
         ax.set_box_aspect((1, 1, 1))
     except Exception:
         pass
-
-    ax.set_title("Cube solution (4×4×4 shell)")
+    ax.set_title("Cube")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_zlabel("z")
-    fig.tight_layout()
+
+
+def interactive_solution_viewer(
+    *,
+    board: Board,
+    pieces: list[Piece],
+    flat_solutions: list[dict[str, set[Cell]]],
+    cube_solutions: list[dict[str, tuple[Face, int]]],
+) -> None:
+    """Interactive viewer to switch between flat/cube and among solutions."""
+    sns.set_theme(style="white")
+
+    if not flat_solutions:
+        raise ValueError("flat_solutions is empty")
+    if not cube_solutions:
+        raise ValueError("cube_solutions is empty")
+
+    fig = plt.figure(figsize=(10, 7))
+
+    # Two overlapping main axes (2D + 3D), we toggle visibility.
+    main_rect: tuple[float, float, float, float] = (0.05, 0.22, 0.9, 0.73)
+    ax2d = fig.add_axes(main_rect)
+    ax3d = fig.add_axes(main_rect, projection="3d")
+    ax3d.set_visible(False)
+
+    # Widgets
+    ax_radio = fig.add_axes((0.05, 0.05, 0.15, 0.12))
+    radio = RadioButtons(ax_radio, ("flat", "cube"), active=0)
+
+    ax_slider = fig.add_axes((0.27, 0.10, 0.55, 0.03))
+    slider_max_init = max(1, len(flat_solutions) - 1)
+    slider = Slider(
+        ax_slider, "solution", 0, slider_max_init, valinit=0, valstep=1
+    )
+
+    ax_prev = fig.add_axes((0.27, 0.05, 0.08, 0.04))
+    btn_prev = Button(ax_prev, "Prev")
+    ax_next = fig.add_axes((0.37, 0.05, 0.08, 0.04))
+    btn_next = Button(ax_next, "Next")
+
+    ax_text = fig.add_axes((0.50, 0.04, 0.45, 0.06))
+    ax_text.axis("off")
+    status_text = ax_text.text(0.0, 0.5, "", va="center")
+
+    state = {"mode": "flat"}
+
+    def _current_solutions() -> list:
+        return flat_solutions if state["mode"] == "flat" else cube_solutions
+
+    def _sync_slider_limits() -> None:
+        sols = _current_solutions()
+        slider.valmin = 0
+        slider.valmax = max(0, len(sols) - 1)
+        if slider.valmin == slider.valmax:
+            slider.ax.set_xlim(slider.valmin - 0.5, slider.valmax + 0.5)
+        else:
+            slider.ax.set_xlim(slider.valmin, slider.valmax)
+        if slider.val > slider.valmax:
+            slider.set_val(slider.valmax)
+
+    def _render() -> None:
+        sols = _current_solutions()
+        idx = int(slider.val)
+        idx = max(0, min(idx, len(sols) - 1))
+        if state["mode"] == "flat":
+            ax3d.set_visible(False)
+            ax2d.set_visible(True)
+            _draw_flat_solution(ax2d, board, sols[idx])
+        else:
+            ax2d.set_visible(False)
+            ax3d.set_visible(True)
+            _draw_cube_solution(ax3d, pieces, sols[idx])
+        status_text.set_text(f"{state['mode']} solution {idx + 1}/{len(sols)}")
+        fig.canvas.draw_idle()
+
+    def _on_mode(label: str | None) -> None:
+        if label is None:
+            return
+        state["mode"] = label
+        _sync_slider_limits()
+        _render()
+
+    def _on_slider(_val: float) -> None:
+        _render()
+
+    def _on_prev(_event) -> None:
+        slider.set_val(max(slider.valmin, slider.val - 1))
+
+    def _on_next(_event) -> None:
+        slider.set_val(min(slider.valmax, slider.val + 1))
+
+    radio.on_clicked(_on_mode)
+    slider.on_changed(_on_slider)
+    btn_prev.on_clicked(_on_prev)
+    btn_next.on_clicked(_on_next)
+
+    _sync_slider_limits()
+    _render()
     plt.show()
 
 
@@ -780,6 +1018,17 @@ def main() -> None:
         action="store_true",
         help="Flip all pieces across x-axis and overwrite the YAML config",
     )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Open interactive viewer to browse flat/cube solutions",
+    )
+    parser.add_argument(
+        "--max-solutions",
+        type=int,
+        default=20,
+        help="Max solutions to collect per scenario (via Gurobi pool)",
+    )
     args = parser.parse_args()
 
     # Example arrays used for template generation / fallback.
@@ -824,16 +1073,24 @@ def main() -> None:
     ]
     board = Board(board_grid_from_border30(board_input.border30))
 
-    # demo_validate_patterns(board, pieces)
+    if args.interactive:
+        flat_solutions = solve_flat_pool(
+            board, pieces, max_solutions=args.max_solutions, output_flag=0
+        )
+        cube_solutions = solve_cube_pool(
+            pieces, max_solutions=args.max_solutions, output_flag=0
+        )
+        interactive_solution_viewer(
+            board=board,
+            pieces=pieces,
+            flat_solutions=flat_solutions,
+            cube_solutions=cube_solutions,
+        )
+        return
 
-    # Uncomment to solve once you replace example data with real data.
+    # Default: solve + plot the first flat solution.
     flat_sol = solve_flat(board, pieces)
-    cube_sol = solve_cube(pieces)
-    print(
-        f"Found {len(flat_sol)} flat solutions and {len(cube_sol)} cube solutions"
-    )
     print_flat_solution(board, flat_sol)
-    # plot_cube_solution(pieces, cube_sol)
 
 
 if __name__ == "__main__":
