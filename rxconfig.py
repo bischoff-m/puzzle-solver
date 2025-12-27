@@ -7,4 +7,5 @@ config = rx.Config(
         rx.plugins.TailwindV4Plugin(),
     ],
     backend_port=9873,
+    state_auto_setters=False,
 )

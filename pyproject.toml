@@ -10,11 +10,7 @@ dependencies = [
     "plotly>=6.5.0",
     "pyyaml>=6.0.2",
     "reflex>=0.8.24.post1",
-    "seaborn>=0.13.2",
 ]
-
-[project.scripts]
-main = "puzzle_solver.cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,52 +1,61 @@
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
+from collections.abc import Iterable
+
 import numpy as np
-import seaborn as sns
-from matplotlib.axes import Axes
-from matplotlib.colors import ListedColormap, to_rgba
+import plotly.graph_objects as go
 
 from .cube_solver import _enumerate_cube_placements
 from .grids import grid_to_cells
-from .types import Board, Cell, Grid, Piece, Voxel
+from .types import Board, Cell, Face, Piece, Voxel
 
 
-def plot_grid(
-    grid: Grid,
-    *,
-    ax: Axes,
-    title: str,
-    true_color: str = "#222222",
-    false_color: str = "#ffffff",
-) -> None:
-    """Plot a boolean grid with square voxels using seaborn."""
-    data = np.array(grid, dtype=int)
-    cmap = ListedColormap([false_color, true_color])
-    sns.heatmap(
-        data,
-        ax=ax,
-        cmap=cmap,
-        vmin=0,
-        vmax=1,
-        cbar=False,
-        square=True,
-        linewidths=0.8,
-        linecolor="#cccccc",
-        xticklabels=False,
-        yticklabels=False,
-    )
-    ax.set_title(title)
-    ax.set_aspect("equal")
-    ax.set_xlabel("")
-    ax.set_ylabel("")
+def _discrete_colorscale(colors: list[str]) -> list[tuple[float, str]]:
+    """Build a Plotly colorscale with hard steps for integer categories."""
+    if not colors:
+        raise ValueError("colors must be non-empty")
+
+    n = len(colors)
+    if n == 1:
+        return [(0.0, colors[0]), (1.0, colors[0])]
+
+    scale: list[tuple[float, str]] = []
+    for i, c in enumerate(colors):
+        lo = i / n
+        hi = (i + 1) / n
+        scale.append((lo, c))
+        scale.append((hi, c))
+    scale[0] = (0.0, scale[0][1])
+    scale[-1] = (1.0, scale[-1][1])
+    return scale
 
 
-def print_flat_solution(board: Board, solution: dict[str, set[Cell]]) -> None:
-    """Plot the flat-board solution with seaborn."""
-    sns.set_theme(style="white")
+def _qualitative_palette(n: int) -> list[str]:
+    base = list(go.Figure().layout.template.layout.colorway or [])
+    if not base:
+        base = [
+            "#636EFA",
+            "#EF553B",
+            "#00CC96",
+            "#AB63FA",
+            "#FFA15A",
+            "#19D3F3",
+            "#FF6692",
+            "#B6E880",
+            "#FF97FF",
+            "#FECB52",
+        ]
+    if n <= len(base):
+        return base[:n]
+    return [base[i % len(base)] for i in range(n)]
 
+
+def plot_flat_solution(
+    board: Board, solution: dict[str, set[Cell]]
+) -> go.Figure:
+    """Return a Plotly figure for the flat-board solution."""
     board_filled = grid_to_cells(board.grid)
-    w, h = 10, 7
+    board_w, board_h = 10, 7
 
     piece_items = sorted(solution.items(), key=lambda kv: kv[0])
     piece_index: dict[str, int] = {
@@ -54,55 +63,7 @@ def print_flat_solution(board: Board, solution: dict[str, set[Cell]]) -> None:
     }
     frame_value = len(piece_items) + 1
 
-    grid_int = np.zeros((h, w), dtype=int)
-    for x, y in board_filled:
-        grid_int[y, x] = frame_value
-
-    for name, occ in piece_items:
-        v = piece_index[name]
-        for x, y in occ:
-            grid_int[y, x] = v
-
-    piece_colors = sns.color_palette("tab10", n_colors=max(6, len(piece_items)))
-    cmap_list: list[tuple[float, float, float] | str] = ["#ffffff"]
-    cmap_list.extend([piece_colors[i] for i in range(len(piece_items))])
-    cmap_list.append("#c0c0c0")
-    cmap = ListedColormap(cmap_list)
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.heatmap(
-        grid_int,
-        ax=ax,
-        cmap=cmap,
-        vmin=0,
-        vmax=frame_value,
-        cbar=False,
-        square=True,
-        linewidths=0.8,
-        linecolor="#cccccc",
-        xticklabels=False,
-        yticklabels=False,
-    )
-    ax.set_aspect("equal")
-    ax.set_title("Flat solution")
-    fig.tight_layout()
-    plt.show()
-
-
-def draw_flat_solution(
-    ax: Axes, board: Board, solution: dict[str, set[Cell]]
-) -> None:
-    """Draw flat solution onto an existing Matplotlib Axes."""
-    board_filled = grid_to_cells(board.grid)
-    w, h = 10, 7
-
-    piece_items = sorted(solution.items(), key=lambda kv: kv[0])
-    piece_index: dict[str, int] = {
-        name: i + 1 for i, (name, _) in enumerate(piece_items)
-    }
-    frame_value = len(piece_items) + 1
-
-    grid_int = np.zeros((h, w), dtype=int)
+    grid_int = np.zeros((board_h, board_w), dtype=int)
     for x, y in board_filled:
         grid_int[y, x] = frame_value
     for name, occ in piece_items:
@@ -110,52 +71,61 @@ def draw_flat_solution(
         for x, y in occ:
             grid_int[y, x] = v
 
-    piece_colors = sns.color_palette("tab10", n_colors=max(6, len(piece_items)))
-    cmap_list: list[tuple[float, float, float] | str] = ["#ffffff"]
-    cmap_list.extend([piece_colors[i] for i in range(len(piece_items))])
-    cmap_list.append("#c0c0c0")
-    cmap = ListedColormap(cmap_list)
+    piece_colors = _qualitative_palette(max(6, len(piece_items)))[
+        : len(piece_items)
+    ]
+    colors = ["#ffffff", *piece_colors, "#c0c0c0"]
+    colorscale = _discrete_colorscale(colors)
 
-    ax.clear()
-    sns.heatmap(
-        grid_int,
-        ax=ax,
-        cmap=cmap,
-        vmin=0,
-        vmax=frame_value,
-        cbar=False,
-        square=True,
-        linewidths=0.8,
-        linecolor="#cccccc",
-        xticklabels=False,
-        yticklabels=False,
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=grid_int,
+                zmin=0,
+                zmax=frame_value,
+                colorscale=colorscale,
+                showscale=False,
+                hoverinfo="skip",
+                xgap=1,
+                ygap=1,
+            )
+        ]
     )
-    ax.set_aspect("equal")
-    ax.set_title("Flat")
+
+    fig.update_layout(
+        title="Flat solution",
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=450,
+    )
+    fig.update_xaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        constrain="domain",
+    )
+    fig.update_yaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        autorange="reversed",
+    )
+    return fig
 
 
-def draw_cube_solution(
-    ax, pieces: list[Piece], solution: dict[str, tuple[str, int]]
-) -> None:
-    """Draw cube solution onto an existing 3D Axes."""
+def _voxels_from_solution(
+    pieces: list[Piece], solution: dict[str, tuple[Face, int]]
+) -> dict[str, set[Voxel]]:
     piece_by_name: dict[str, Piece] = {p.name: p for p in pieces}
 
-    filled = np.zeros((4, 4, 4), dtype=bool)
-    facecolors = np.empty((4, 4, 4), dtype=object)
+    out: dict[str, set[Voxel]] = {}
+    for name, (face, rot) in solution.items():
+        piece = piece_by_name.get(name)
+        if piece is None:
+            raise KeyError(f"Piece {name!r} not found in pieces")
 
-    names_sorted = sorted(solution.keys())
-    palette = sns.color_palette("tab10", n_colors=max(6, len(names_sorted)))
-    name_to_rgba = {
-        name: to_rgba(palette[i], alpha=1.0)
-        for i, name in enumerate(names_sorted)
-    }
-
-    for name in names_sorted:
-        face, rot = solution[name]
         occ: set[Voxel] | None = None
-        for f, r, voxels in _enumerate_cube_placements(
-            piece_by_name[name].grid
-        ):
+        for f, r, voxels in _enumerate_cube_placements(piece.grid):
             if f == face and r == rot:
                 occ = voxels
                 break
@@ -163,18 +133,107 @@ def draw_cube_solution(
             raise RuntimeError(
                 f"Could not reconstruct placement for piece {name}"
             )
-        rgba = name_to_rgba[name]
-        for x, y, z in occ:
-            filled[x, y, z] = True
-            facecolors[x, y, z] = rgba
+        out[name] = occ
+    return out
 
-    ax.clear()
-    ax.voxels(filled, facecolors=facecolors, edgecolor="#222222", linewidth=0.6)
-    try:
-        ax.set_box_aspect((1, 1, 1))
-    except Exception:
-        pass
-    ax.set_title("Cube")
-    ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_zlabel("z")
+
+def plot_cube_solution(
+    pieces: list[Piece], solution: dict[str, tuple[Face, int]]
+) -> go.Figure:
+    """Return a Plotly 3D figure for the cube solution.
+
+    Rendered as a 3D voxel scatter (one marker per occupied voxel).
+    """
+    voxels_by_piece = _voxels_from_solution(pieces, solution)
+
+    names_sorted = sorted(voxels_by_piece.keys())
+    palette = _qualitative_palette(max(6, len(names_sorted)))[
+        : len(names_sorted)
+    ]
+    name_to_color = {name: palette[i] for i, name in enumerate(names_sorted)}
+
+    xs: list[int] = []
+    ys: list[int] = []
+    zs: list[int] = []
+    cs: list[str] = []
+    hover: list[str] = []
+
+    for name in names_sorted:
+        for x, y, z in sorted(voxels_by_piece[name]):
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+            cs.append(name_to_color[name])
+            hover.append(f"{name} @ ({x},{y},{z})")
+
+    fig = go.Figure(
+        data=[
+            go.Scatter3d(
+                x=xs,
+                y=ys,
+                z=zs,
+                mode="markers",
+                marker=dict(
+                    size=10,
+                    color=cs,
+                    symbol="square",
+                    line=dict(width=1, color="#222222"),
+                    opacity=1.0,
+                ),
+                text=hover,
+                hovertemplate="%{text}<extra></extra>",
+            )
+        ]
+    )
+
+    fig.update_layout(
+        title="Cube solution",
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=600,
+        scene=dict(
+            xaxis=dict(range=[-0.5, 3.5], dtick=1, title="x"),
+            yaxis=dict(range=[-0.5, 3.5], dtick=1, title="y"),
+            zaxis=dict(range=[-0.5, 3.5], dtick=1, title="z"),
+            aspectmode="cube",
+        ),
+        showlegend=False,
+    )
+    return fig
+
+
+def plot_grids(grids: Iterable[tuple[str, list[list[bool]]]]) -> go.Figure:
+    """Minimal helper: plot a boolean 2D grid (first item) as a heatmap."""
+    items = list(grids)
+    if not items:
+        return go.Figure()
+
+    title, grid = items[0]
+    data = np.array(grid, dtype=int)
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=data,
+                zmin=0,
+                zmax=1,
+                colorscale=_discrete_colorscale(["#ffffff", "#222222"]),
+                showscale=False,
+                hoverinfo="skip",
+                xgap=1,
+                ygap=1,
+            )
+        ]
+    )
+    fig.update_layout(
+        title=title,
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=320,
+    )
+    fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
+    fig.update_yaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        autorange="reversed",
+    )
+    return fig

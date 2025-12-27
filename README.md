@@ -1,4 +1,3 @@
-
 # Puzzle Solver (Gurobi IP)
 
 This repo models a 3D-printed voxel puzzle as an **integer program** and solves it with **gurobipy**.
@@ -9,6 +8,7 @@ You specify:
 
   - The **inner 2×2** voxels are **always filled**.
   - The **outer border** voxels (12 cells) are configurable as a boolean array `border12`.
+
 - A **10×7 board**.
 
   - The **inner 8×5** region is **always missing** (the cavity).
@@ -65,14 +65,7 @@ The inner cavity cells `(x,y)` with `x=1..8` and `y=1..5` are always missing (`F
 
 ## Validation Printing
 
-`main.py` provides functions to transform and print these patterns row-by-row:
-
-- `piece_grid_from_border12(border12) -> 4×4 bool grid`
-- `board_grid_from_border30(border30) -> 10×7 bool grid`
-- `print_grid(grid)`
-- `demo_validate_patterns(board, pieces)`
-
-This is intended for quickly validating you indexed the border arrays correctly.
+Pattern parsing lives in the `puzzle_solver` library (see `puzzle_solver.grids` and `puzzle_solver.yaml_io`).
 
 ---
 
@@ -123,13 +116,13 @@ Placements $K_p$:
 
 Constraints:
 
-1) Each piece is placed exactly once:
+1. Each piece is placed exactly once:
 
 $$
 \sum_{k\in K_p} x_{p,k} = 1\quad \forall p\in P
 $$
 
-1) Every target cell is covered exactly once:
+1. Every target cell is covered exactly once:
 
 $$
 \sum_{p\in P}\sum_{k\in K_p} a_{p,k,c}\,x_{p,k} = 1\quad \forall c\in T
@@ -161,13 +154,13 @@ Placements $K_p$:
 
 Constraints:
 
-1) Each piece chooses exactly one face/rotation:
+1. Each piece chooses exactly one face/rotation:
 
 $$
 \sum_{k\in K_p} x_{p,k} = 1\quad \forall p\in P
 $$
 
-1) Every boundary voxel is covered exactly once:
+1. Every boundary voxel is covered exactly once:
 
 $$
 \sum_{p\in P}\sum_{k\in K_p} a_{p,k,v}\,x_{p,k} = 1\quad \forall v\in V
@@ -182,5 +175,5 @@ Interpretation:
 
 ## Running
 
-- Edit the example data in [main.py](main.py) (replace the `example_pieces` and `example_board`).
-- Run: `uv run python main.py`
+- Edit [puzzle.yaml](puzzle.yaml) to change the board/pieces.
+- Run the Reflex UI: `reflex run`
