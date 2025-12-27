@@ -8,19 +8,28 @@ from .text_and_preprocessing import text_and_preprocessing_section
 
 
 def page() -> rx.Component:
-    return rx.container(
+    return rx.center(
         rx.color_mode.button(position="top-right"),
         rx.vstack(
             rx.heading("Character Table", size="7"),
-            text_and_preprocessing_section(),
-            rx.divider(),
-            config_section(),
-            rx.divider(),
-            table_plot(),
+            rx.hstack(
+                rx.vstack(
+                    text_and_preprocessing_section(),
+                    rx.divider(),
+                    config_section(),
+                    spacing="4",
+                    align="start",
+                ),
+                rx.vstack(
+                    table_plot(),
+                    spacing="2",
+                    align="start",
+                ),
+                spacing="6",
+                align="start",
+            ),
             spacing="4",
-            width="100%",
+            align="center",
         ),
-        width="100%",
-        max_width="1100px",
-        padding_y="2em",
+        padding="2em",
     )
