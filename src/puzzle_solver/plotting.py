@@ -31,20 +31,20 @@ def _discrete_colorscale(colors: list[str]) -> list[tuple[float, str]]:
 
 
 def _qualitative_palette(n: int) -> list[str]:
-    base = list(go.Figure().layout.template.layout.colorway or [])
-    if not base:
-        base = [
-            "#636EFA",
-            "#EF553B",
-            "#00CC96",
-            "#AB63FA",
-            "#FFA15A",
-            "#19D3F3",
-            "#FF6692",
-            "#B6E880",
-            "#FF97FF",
-            "#FECB52",
-        ]
+    # Avoid reaching into Plotly's template typing (varies across versions and
+    # is not always modeled in type stubs). Keep a stable default palette.
+    base = [
+        "#636EFA",
+        "#EF553B",
+        "#00CC96",
+        "#AB63FA",
+        "#FFA15A",
+        "#19D3F3",
+        "#FF6692",
+        "#B6E880",
+        "#FF97FF",
+        "#FECB52",
+    ]
     if n <= len(base):
         return base[:n]
     return [base[i % len(base)] for i in range(n)]
@@ -137,12 +137,55 @@ def _voxels_from_solution(
     return out
 
 
+def _add_voxel_cube_to_mesh(
+    *,
+    x0: float,
+    y0: float,
+    z0: float,
+    size: float,
+    xs: list[float],
+    ys: list[float],
+    zs: list[float],
+    ii: list[int],
+    jj: list[int],
+    kk: list[int],
+) -> None:
+    """Append a unit cube (12 triangles) to a growing Mesh3d buffer."""
+    base = len(xs)
+    x1, y1, z1 = x0 + size, y0 + size, z0 + size
+
+    # 8 vertices of the cube.
+    verts = [
+        (x0, y0, z0),
+        (x0, y1, z0),
+        (x1, y1, z0),
+        (x1, y0, z0),
+        (x0, y0, z1),
+        (x0, y1, z1),
+        (x1, y1, z1),
+        (x1, y0, z1),
+    ]
+    for x, y, z in verts:
+        xs.append(x)
+        ys.append(y)
+        zs.append(z)
+
+    # 12 triangles forming cube faces (same topology as Plotly docs “Mesh Cube”).
+    i_loc = [7, 0, 0, 0, 4, 4, 6, 6, 4, 0, 3, 2]
+    j_loc = [3, 4, 1, 2, 5, 6, 5, 2, 0, 1, 6, 3]
+    k_loc = [0, 7, 2, 3, 6, 7, 1, 1, 5, 5, 7, 6]
+    for a, b, c in zip(i_loc, j_loc, k_loc, strict=True):
+        ii.append(base + a)
+        jj.append(base + b)
+        kk.append(base + c)
+
+
 def plot_cube_solution(
     pieces: list[Piece], solution: dict[str, tuple[Face, int]]
 ) -> go.Figure:
     """Return a Plotly 3D figure for the cube solution.
 
-    Rendered as a 3D voxel scatter (one marker per occupied voxel).
+    Rendered as voxel cubes (triangulated mesh), colored by piece.
     """
     voxels_by_piece = _voxels_from_solution(pieces, solution)
 
@@ -152,51 +195,63 @@ def plot_cube_solution(
     ]
     name_to_color = {name: palette[i] for i, name in enumerate(names_sorted)}
 
-    xs: list[int] = []
-    ys: list[int] = []
-    zs: list[int] = []
-    cs: list[str] = []
-    hover: list[str] = []
+    # Build one mesh per piece (keeps coloring simple and hover meaningful).
+    data: list[object] = []
+    voxel_size = 1.0
+    inset = 0.02  # tiny inset to reduce z-fighting between adjacent cubes
 
     for name in names_sorted:
-        for x, y, z in sorted(voxels_by_piece[name]):
-            xs.append(x)
-            ys.append(y)
-            zs.append(z)
-            cs.append(name_to_color[name])
-            hover.append(f"{name} @ ({x},{y},{z})")
+        xs: list[float] = []
+        ys: list[float] = []
+        zs: list[float] = []
+        ii: list[int] = []
+        jj: list[int] = []
+        kk: list[int] = []
 
-    fig = go.Figure(
-        data=[
-            go.Scatter3d(
+        for x, y, z in sorted(voxels_by_piece[name]):
+            _add_voxel_cube_to_mesh(
+                x0=float(x) + inset,
+                y0=float(y) + inset,
+                z0=float(z) + inset,
+                size=voxel_size - 2 * inset,
+                xs=xs,
+                ys=ys,
+                zs=zs,
+                ii=ii,
+                jj=jj,
+                kk=kk,
+            )
+
+        data.append(
+            go.Mesh3d(
                 x=xs,
                 y=ys,
                 z=zs,
-                mode="markers",
-                marker=dict(
-                    size=10,
-                    color=cs,
-                    symbol="square",
-                    line=dict(width=1, color="#222222"),
-                    opacity=1.0,
-                ),
-                text=hover,
-                hovertemplate="%{text}<extra></extra>",
+                i=ii,
+                j=jj,
+                k=kk,
+                color=name_to_color[name],
+                opacity=1.0,
+                flatshading=True,
+                name=name,
+                hovertemplate=f"{name}<extra></extra>",
+                showscale=False,
             )
-        ]
-    )
+        )
+
+    fig = go.Figure(data=data)
 
     fig.update_layout(
         title="Cube solution",
         margin=dict(l=10, r=10, t=50, b=10),
         height=600,
         scene=dict(
-            xaxis=dict(range=[-0.5, 3.5], dtick=1, title="x"),
-            yaxis=dict(range=[-0.5, 3.5], dtick=1, title="y"),
-            zaxis=dict(range=[-0.5, 3.5], dtick=1, title="z"),
+            xaxis=dict(range=[-0.25, 4.25], dtick=1, title="x"),
+            yaxis=dict(range=[-0.25, 4.25], dtick=1, title="y"),
+            zaxis=dict(range=[-0.25, 4.25], dtick=1, title="z"),
             aspectmode="cube",
         ),
-        showlegend=False,
+        showlegend=True,
     )
     return fig
 
