@@ -12,7 +12,7 @@ import seaborn as sns
 import yaml
 from gurobipy import GRB
 from matplotlib.axes import Axes
-from matplotlib.colors import ListedColormap
+from matplotlib.colors import ListedColormap, to_rgba
 
 Cell = tuple[int, int]
 Voxel = tuple[int, int, int]
@@ -347,6 +347,15 @@ def flip_grid_x(grid: Grid) -> Grid:
     return list(reversed([list(row) for row in grid]))
 
 
+def flip_grid_y(grid: Grid) -> Grid:
+    """Flip a 2D grid across the y-axis.
+
+    With our (x,y) convention where x increases to the right, this is a horizontal
+    flip (left column swaps with right column).
+    """
+    return [list(reversed(row)) for row in grid]
+
+
 def grid_to_cells(grid: Grid) -> set[Cell]:
     cells: set[Cell] = set()
     for y, row in enumerate(grid):
@@ -544,19 +553,33 @@ def print_flat_solution(board: Board, solution: dict[str, set[Cell]]) -> None:
 
 
 def _face_map(face: Face, u: int, v: int) -> Voxel:
-    """Map (u,v) in 0..3x0..3 on a face to cube coordinates (x,y,z)."""
-    if face == "+X":
-        return (3, u, v)
-    if face == "-X":
-        return (0, u, v)
-    if face == "+Y":
-        return (u, 3, v)
-    if face == "-Y":
-        return (u, 0, v)
+    """Map (u,v) in 0..3×0..3 on a face to cube coordinates (x,y,z).
+
+    Important: this mapping must correspond to a *proper 3D rotation* of the piece
+    (no reflection), with the piece's *top side facing outward* for every face.
+
+    We treat (u,v) as the piece grid indices with u increasing to the right and
+    v increasing downward (row index). For each face we choose an in-face (u,v)
+    basis such that e_u × e_v equals the outward normal.
+    """
     if face == "+Z":
+        # Outward normal +Z, use (u->+x, v->+y).
         return (u, v, 3)
     if face == "-Z":
-        return (u, v, 0)
+        # Outward normal -Z, use (u->+x, v->-y).
+        return (u, 3 - v, 0)
+    if face == "+Y":
+        # Outward normal +Y, use (u->+x, v->-z).
+        return (u, 3, 3 - v)
+    if face == "-Y":
+        # Outward normal -Y, use (u->+x, v->+z).
+        return (u, 0, v)
+    if face == "+X":
+        # Outward normal +X, use (u->+y, v->+z).
+        return (3, u, v)
+    if face == "-X":
+        # Outward normal -X, use (u->+y, v->-z).
+        return (0, u, 3 - v)
     raise ValueError(f"Unknown face: {face}")
 
 
@@ -566,9 +589,15 @@ def _enumerate_cube_placements(
     """All (face, rotation) placements of a 4x4 piece on the 4x4x4 cube boundary."""
     placements: list[tuple[Face, int, set[Voxel]]] = []
     faces: list[Face] = ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]
+
+    # Cube convention: the piece's *bottom/marked side* faces inward.
+    # Relative to the outside observer, this corresponds to a single in-plane mirror
+    # of the 2D pattern before applying in-plane rotations.
+    base_grid = flip_grid_y(piece_grid)
+
     for face in faces:
         for rot in range(4):
-            g = rotate_grid(piece_grid, rot)
+            g = rotate_grid(base_grid, rot)
             occ: set[Voxel] = set()
             for v in range(4):
                 for u in range(4):
@@ -639,6 +668,71 @@ def solve_cube(pieces: list[Piece]) -> dict[str, tuple[Face, int]]:
         if name not in sol:
             raise RuntimeError(f"Piece {name} not assigned in solution")
     return sol
+
+
+def plot_cube_solution(
+    pieces: list[Piece], solution: dict[str, tuple[Face, int]]
+) -> None:
+    """Render a 4x4x4 cube-shell solution using Matplotlib 3D voxels.
+
+    This follows the style of Matplotlib's `ax.voxels(...)` gallery examples.
+    Each piece gets a distinct facecolor.
+    """
+    sns.set_theme(style="white")
+
+    # Map piece name -> grid
+    piece_by_name: dict[str, Piece] = {p.name: p for p in pieces}
+
+    filled = np.zeros((4, 4, 4), dtype=bool)  # indexed as [x,y,z]
+    facecolors = np.empty((4, 4, 4), dtype=object)
+
+    # Assign colors in stable name order.
+    names_sorted = sorted(solution.keys())
+    palette = sns.color_palette("tab10", n_colors=max(6, len(names_sorted)))
+    name_to_rgba = {
+        name: to_rgba(palette[i], alpha=1.0)
+        for i, name in enumerate(names_sorted)
+    }
+
+    for name in names_sorted:
+        if name not in piece_by_name:
+            raise ValueError(f"Solution references unknown piece name: {name}")
+        face, rot = solution[name]
+
+        # Recompute occupied voxels for the chosen (face, rot).
+        occ: set[Voxel] | None = None
+        for f, r, voxels in _enumerate_cube_placements(
+            piece_by_name[name].grid
+        ):
+            if f == face and r == rot:
+                occ = voxels
+                break
+        if occ is None:
+            raise RuntimeError(
+                f"Could not reconstruct placement for piece {name}"
+            )
+
+        rgba = name_to_rgba[name]
+        for x, y, z in occ:
+            filled[x, y, z] = True
+            facecolors[x, y, z] = rgba
+
+    fig = plt.figure(figsize=(7.5, 7.5))
+    ax = fig.add_subplot(projection="3d")
+    ax.voxels(filled, facecolors=facecolors, edgecolor="#222222", linewidth=0.6)
+
+    # Keep equal aspect ratio.
+    try:
+        ax.set_box_aspect((1, 1, 1))
+    except Exception:
+        pass
+
+    ax.set_title("Cube solution (4×4×4 shell)")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    fig.tight_layout()
+    plt.show()
 
 
 def demo_validate_patterns(board: Board, pieces: list[Piece]) -> None:
@@ -734,9 +828,12 @@ def main() -> None:
 
     # Uncomment to solve once you replace example data with real data.
     flat_sol = solve_flat(board, pieces)
+    cube_sol = solve_cube(pieces)
+    print(
+        f"Found {len(flat_sol)} flat solutions and {len(cube_sol)} cube solutions"
+    )
     print_flat_solution(board, flat_sol)
-    # cube_sol = solve_cube(pieces)
-    # print(cube_sol)
+    # plot_cube_solution(pieces, cube_sol)
 
 
 if __name__ == "__main__":
