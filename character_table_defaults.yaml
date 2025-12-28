@@ -47,5 +47,6 @@ punch_cards:
   - x: 24
     y: 6
     flipped: false
+    isActive: true
     shift: 1
     word: ""

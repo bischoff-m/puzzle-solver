@@ -64,6 +64,11 @@ def _punch_card_row(card, index) -> rx.Component:
                 placeholder="",
             ),
             rx.checkbox(
+                "Active",
+                is_checked=card.is_active,
+                on_change=CharacterTableState.set_punch_card_active(index),
+            ),
+            rx.checkbox(
                 "Flipped",
                 is_checked=card.flipped,
                 on_change=CharacterTableState.set_punch_card_flipped(index),

@@ -25,7 +25,14 @@ def load_character_table_defaults(
         "table_width": 20,
         "code_word_length": 5,
         "punch_cards": [
-            {"x": 1, "y": 1, "flipped": False, "shift": 1, "word": ""}
+            {
+                "x": 1,
+                "y": 1,
+                "flipped": False,
+                "isActive": True,
+                "shift": 1,
+                "word": "",
+            }
         ],
     }
 
@@ -66,6 +73,7 @@ def load_character_table_defaults(
                     "x": _int_ge_1(item.get("x"), 1),
                     "y": _int_ge_1(item.get("y"), 1),
                     "flipped": bool(item.get("flipped", False)),
+                    "isActive": bool(item.get("isActive", True)),
                     "shift": _int_ge_1(item.get("shift"), 1),
                     "word": item.get("word")
                     if isinstance(item.get("word"), str)

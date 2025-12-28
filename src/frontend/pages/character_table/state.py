@@ -17,6 +17,7 @@ class PunchCardConfig(BaseModel):
     x: int = 1
     y: int = 1
     flipped: bool = False
+    is_active: bool = True
     shift: int = 1
     word: str = ""
 
@@ -134,8 +135,11 @@ def build_character_table_figure(
                     )
                 )
 
-            # Thick border for punch-mask hits (union of all punch cards).
+            # Highlight punch-mask hits (union of active punch cards) by
+            # whitening the background.
             for card in punch_cards:
+                if not bool(card.is_active):
+                    continue
                 px, py = _card_pos(card)
                 # Positions are 1-based to match the user's expectation.
                 punch_col = px - 1
@@ -158,7 +162,7 @@ def build_character_table_figure(
                             y0=row - 0.5,
                             y1=row + 0.5,
                             line=dict(color="rgba(0,0,0,1)", width=3),
-                            fillcolor="rgba(0,0,0,0)",
+                            fillcolor="rgba(255,255,255,0.3)",
                         )
                     )
                     break
@@ -266,6 +270,7 @@ class CharacterTableState(rx.State):
                 "x": int(c.x),
                 "y": int(c.y),
                 "flipped": bool(c.flipped),
+                "isActive": bool(c.is_active),
                 "shift": int(c.shift),
                 "word": str(c.word),
             }
@@ -312,6 +317,12 @@ class CharacterTableState(rx.State):
                 continue
             x = CharacterTableState._coerce_int_ge_1(item.get("x"), default=1)
             y = CharacterTableState._coerce_int_ge_1(item.get("y"), default=1)
+            is_active = bool(
+                item.get(
+                    "isActive",
+                    item.get("is_active", True),
+                )
+            )
             shift = CharacterTableState._coerce_int_ge_1(
                 item.get("shift"), default=1
             )
@@ -321,7 +332,12 @@ class CharacterTableState(rx.State):
             flipped = bool(item.get("flipped", False))
             out.append(
                 PunchCardConfig(
-                    x=x, y=y, flipped=flipped, shift=shift, word=word
+                    x=x,
+                    y=y,
+                    flipped=flipped,
+                    is_active=is_active,
+                    shift=shift,
+                    word=word,
                 )
             )
         return out
@@ -354,6 +370,7 @@ class CharacterTableState(rx.State):
                             "x": 1,
                             "y": 1,
                             "flipped": False,
+                            "isActive": True,
                             "shift": 1,
                             "word": "",
                         }
@@ -729,3 +746,7 @@ class CharacterTableState(rx.State):
     @rx.event
     def set_punch_card_flipped(self, index: int, value: bool):
         self._update_card(index, updates={"flipped": bool(value)})
+
+    @rx.event
+    def set_punch_card_active(self, index: int, value: bool):
+        self._update_card(index, updates={"isActive": bool(value)})
