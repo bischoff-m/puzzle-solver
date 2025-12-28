@@ -506,9 +506,36 @@ class CharacterTableState(rx.State):
         except (TypeError, ValueError):
             width = 1
 
+        width = max(1, min(80, width))
         self.table_width = width
         self.table_width_storage = str(width)
         self.table_width_slider = [float(width)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def set_table_width_input(self, value: str):
+        width = self._coerce_int_ge_1(value, default=1)
+        width = max(1, min(80, width))
+        self.table_width = width
+        self.table_width_storage = str(width)
+        self.table_width_slider = [float(width)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def dec_table_width(self):
+        self.table_width = max(1, int(self.table_width) - 1)
+        self.table_width_storage = str(self.table_width)
+        self.table_width_slider = [float(self.table_width)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def inc_table_width(self):
+        self.table_width = min(80, int(self.table_width) + 1)
+        self.table_width_storage = str(self.table_width)
+        self.table_width_slider = [float(self.table_width)]
         self._sync_config_storage()
         self._rebuild()
 
@@ -519,11 +546,38 @@ class CharacterTableState(rx.State):
             n = int(float(raw))
         except (TypeError, ValueError):
             n = 1
-        n = max(1, n)
+
+        n = max(1, min(40, n))
 
         self.code_word_length = n
         self.code_word_length_storage = str(n)
         self.code_word_length_slider = [float(n)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def set_code_word_length_input(self, value: str):
+        n = self._coerce_int_ge_1(value, default=1)
+        n = max(1, min(40, n))
+        self.code_word_length = n
+        self.code_word_length_storage = str(n)
+        self.code_word_length_slider = [float(n)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def dec_code_word_length(self):
+        self.code_word_length = max(1, int(self.code_word_length) - 1)
+        self.code_word_length_storage = str(self.code_word_length)
+        self.code_word_length_slider = [float(self.code_word_length)]
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def inc_code_word_length(self):
+        self.code_word_length = min(40, int(self.code_word_length) + 1)
+        self.code_word_length_storage = str(self.code_word_length)
+        self.code_word_length_slider = [float(self.code_word_length)]
         self._sync_config_storage()
         self._rebuild()
 
@@ -573,16 +627,100 @@ class CharacterTableState(rx.State):
         )
 
     @rx.event
+    def set_punch_card_x_slider(self, index: int, value: list[float]):
+        raw = value[0] if value else 1
+        try:
+            x = int(float(raw))
+        except (TypeError, ValueError):
+            x = 1
+        x = max(1, min(200, x))
+        self._update_card(index, updates={"x": x})
+
+    @rx.event
+    def dec_punch_card_x(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        x = max(1, int(cards[i].x) - 1)
+        self._update_card(index, updates={"x": x})
+
+    @rx.event
+    def inc_punch_card_x(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        x = min(200, int(cards[i].x) + 1)
+        self._update_card(index, updates={"x": x})
+
+    @rx.event
     def set_punch_card_y(self, index: int, value: str):
         self._update_card(
             index, updates={"y": self._coerce_int_ge_1(value, default=1)}
         )
 
     @rx.event
+    def set_punch_card_y_slider(self, index: int, value: list[float]):
+        raw = value[0] if value else 1
+        try:
+            y = int(float(raw))
+        except (TypeError, ValueError):
+            y = 1
+        y = max(1, min(200, y))
+        self._update_card(index, updates={"y": y})
+
+    @rx.event
+    def dec_punch_card_y(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        y = max(1, int(cards[i].y) - 1)
+        self._update_card(index, updates={"y": y})
+
+    @rx.event
+    def inc_punch_card_y(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        y = min(200, int(cards[i].y) + 1)
+        self._update_card(index, updates={"y": y})
+
+    @rx.event
     def set_punch_card_shift(self, index: int, value: str):
         self._update_card(
             index, updates={"shift": self._coerce_int_ge_1(value, default=1)}
         )
+
+    @rx.event
+    def set_punch_card_shift_slider(self, index: int, value: list[float]):
+        raw = value[0] if value else 1
+        try:
+            shift = int(float(raw))
+        except (TypeError, ValueError):
+            shift = 1
+        shift = max(1, min(200, shift))
+        self._update_card(index, updates={"shift": shift})
+
+    @rx.event
+    def dec_punch_card_shift(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        shift = max(1, int(cards[i].shift) - 1)
+        self._update_card(index, updates={"shift": shift})
+
+    @rx.event
+    def inc_punch_card_shift(self, index: int):
+        cards = list(self.punch_cards)
+        i = int(index)
+        if not (0 <= i < len(cards)):
+            return
+        shift = min(200, int(cards[i].shift) + 1)
+        self._update_card(index, updates={"shift": shift})
 
     @rx.event
     def set_punch_card_word(self, index: int, value: str):

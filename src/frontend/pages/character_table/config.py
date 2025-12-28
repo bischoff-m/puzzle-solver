@@ -1,6 +1,10 @@
 import reflex as rx
 
+from frontend.components.int_control import int_control
+
 from .state import CharacterTableState
+
+_LABEL_W = "10em"
 
 
 def _punch_card_row(card, index) -> rx.Component:
@@ -17,46 +21,47 @@ def _punch_card_row(card, index) -> rx.Component:
             width="100%",
             align="center",
         ),
-        rx.hstack(
-            rx.text("X"),
-            rx.input(
-                type="number",
-                min=1,
-                step=1,
-                value=card.x,
-                on_change=CharacterTableState.set_punch_card_x(index),
-                width="8em",
+        int_control(
+            label="X",
+            value=card.x,
+            min_=1,
+            max_=200,
+            label_width=_LABEL_W,
+            on_dec=CharacterTableState.dec_punch_card_x(index),
+            on_inc=CharacterTableState.inc_punch_card_x(index),
+            on_change_slider=CharacterTableState.set_punch_card_x_slider(index),
+            on_change_text=CharacterTableState.set_punch_card_x(index),
+        ),
+        int_control(
+            label="Y",
+            value=card.y,
+            min_=1,
+            max_=200,
+            label_width=_LABEL_W,
+            on_dec=CharacterTableState.dec_punch_card_y(index),
+            on_inc=CharacterTableState.inc_punch_card_y(index),
+            on_change_slider=CharacterTableState.set_punch_card_y_slider(index),
+            on_change_text=CharacterTableState.set_punch_card_y(index),
+        ),
+        int_control(
+            label="Shift",
+            value=card.shift,
+            min_=1,
+            max_=200,
+            label_width=_LABEL_W,
+            on_dec=CharacterTableState.dec_punch_card_shift(index),
+            on_inc=CharacterTableState.inc_punch_card_shift(index),
+            on_change_slider=CharacterTableState.set_punch_card_shift_slider(
+                index
             ),
-            rx.text("Y"),
-            rx.input(
-                type="number",
-                min=1,
-                step=1,
-                value=card.y,
-                on_change=CharacterTableState.set_punch_card_y(index),
-                width="8em",
-            ),
-            rx.text("Shift"),
-            rx.input(
-                type="number",
-                min=1,
-                step=1,
-                value=card.shift,
-                on_change=CharacterTableState.set_punch_card_shift(index),
-                width="8em",
-            ),
-            spacing="3",
-            width="100%",
-            align="center",
-            wrap="wrap",
+            on_change_text=CharacterTableState.set_punch_card_shift(index),
         ),
         rx.hstack(
-            rx.text("Word"),
+            rx.text("Word", width=_LABEL_W, text_align="right"),
             rx.input(
                 value=card.word,
                 on_change=CharacterTableState.set_punch_card_word(index),
                 placeholder="",
-                width="20em",
             ),
             rx.checkbox(
                 "Flipped",
@@ -66,7 +71,6 @@ def _punch_card_row(card, index) -> rx.Component:
             spacing="3",
             width="100%",
             align="center",
-            wrap="wrap",
         ),
         rx.divider(),
         width="100%",
@@ -91,35 +95,29 @@ def config_section() -> rx.Component:
             width="100%",
             align="center",
         ),
-        rx.hstack(
-            rx.text("Table width"),
-            rx.text(CharacterTableState.table_width),
-            rx.slider(
-                value=CharacterTableState.table_width_slider,
-                min=1,
-                max=80,
-                step=1,
-                on_change=CharacterTableState.set_table_width,
-                width="20em",
-            ),
-            spacing="3",
-            width="100%",
-            align="center",
+        int_control(
+            label="Table width",
+            value=CharacterTableState.table_width,
+            min_=1,
+            max_=80,
+            slider_value=CharacterTableState.table_width_slider,
+            label_width=_LABEL_W,
+            on_dec=CharacterTableState.dec_table_width,
+            on_inc=CharacterTableState.inc_table_width,
+            on_change_slider=CharacterTableState.set_table_width,
+            on_change_text=CharacterTableState.set_table_width_input,
         ),
-        rx.hstack(
-            rx.text("code word length"),
-            rx.text(CharacterTableState.code_word_length),
-            rx.slider(
-                value=CharacterTableState.code_word_length_slider,
-                min=1,
-                max=40,
-                step=1,
-                on_change=CharacterTableState.set_code_word_length,
-                width="20em",
-            ),
-            spacing="3",
-            width="100%",
-            align="center",
+        int_control(
+            label="Code word length",
+            value=CharacterTableState.code_word_length,
+            min_=1,
+            max_=40,
+            slider_value=CharacterTableState.code_word_length_slider,
+            label_width=_LABEL_W,
+            on_dec=CharacterTableState.dec_code_word_length,
+            on_inc=CharacterTableState.inc_code_word_length,
+            on_change_slider=CharacterTableState.set_code_word_length,
+            on_change_text=CharacterTableState.set_code_word_length_input,
         ),
         rx.divider(),
         rx.hstack(
