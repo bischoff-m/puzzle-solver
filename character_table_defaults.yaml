@@ -1,0 +1,10 @@
+version: 1
+text: ""
+table_width: 20
+code_word_length: 5
+punch_cards:
+  - x: 1
+    y: 1
+    flipped: false
+    shift: 1
+    word: ""
