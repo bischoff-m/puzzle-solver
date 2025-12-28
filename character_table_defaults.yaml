@@ -1,10 +1,51 @@
 version: 1
-text: ""
-table_width: 20
-code_word_length: 5
+text: |
+  Probier's mal mit Gemütlichkeit
+  Mit Ruhe und Gemütlichkeit
+  Jagst du den Alltag und die Sorgen weg
+  Und wenn du stets gemütlich bist
+  Und etwas appetitlich ist
+  Dann nimm es dir, egal von welchem Fleck
+
+  Was soll ich woanders, wo's mir nicht gefällt?
+  Ich gehe nicht fort hier, auch nicht für Geld
+  Die Bienen summen in der Luft
+  Erfüllen sie mit Honigduft
+  Und schaust du unter den Stein
+  Erblickst du Ameisen, die hier gut gedeih'n
+  Probier' mal, zwei, drei, vier
+
+  Ist das dein Ernst?
+
+  Ho-ho, es gibt nichts bess'res! Das ist ein herrliches Gefühl wenn die kitzeln
+
+  Denn mit Gemütlichkeit komt auch das Glück zu dir (Wie denn?)
+  Es kommt zu dir
+
+  Probier's mal mit Gemütlichkeit
+  Mit Ruhe und Gemütlichkeit
+  Vertreibst du deinen ganzen Sorgenkram
+  Und wenn du stets gemütlich bist
+  Und etwas appetitlich ist
+  Dann nimm es dir, egal woher es kam
+
+  Na, und pflückst du gern Beeren
+  Und die piekst dich dabei (Au!)
+  Dann lass dich belehren:
+  Schmerz geht bald vorbei
+
+  Du musst bescheiden aber nicht gierig im Leben sein
+  Sonst tust du dir weh
+  Du bist verletzt und zahlst nur drauf
+  Darum pflücke gleich mit dem richt'gen Dreh
+  Hast du das jetzt kapiert? (Vollkommen, danke Balou!)
+  Denn mit Gemütlichkeit kommt auch das Glück zu dir (Du hast wirklich Recht)
+  Es kommt zu dir
+table_width: 37
+code_word_length: 6
 punch_cards:
-  - x: 1
-    y: 1
+  - x: 24
+    y: 6
     flipped: false
     shift: 1
     word: ""

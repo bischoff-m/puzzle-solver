@@ -4,6 +4,7 @@ from typing import Any
 
 import plotly.graph_objects as go
 import reflex as rx
+import yaml
 from pydantic import BaseModel
 
 from puzzle_solver.api import load_character_table_defaults
@@ -324,6 +325,72 @@ class CharacterTableState(rx.State):
                 )
             )
         return out
+
+    def _apply_defaults(self, defaults: dict[str, Any]) -> None:
+        text_val = defaults.get("text")
+        if isinstance(text_val, str):
+            self.text = text_val
+        else:
+            self.text = ""
+
+        self.table_width = self._coerce_int_ge_1(
+            defaults.get("table_width"), default=20
+        )
+        self.table_width_storage = str(self.table_width)
+        self.table_width_slider = [float(self.table_width)]
+
+        self.code_word_length = self._coerce_int_ge_1(
+            defaults.get("code_word_length"), default=5
+        )
+        self.code_word_length_storage = str(self.code_word_length)
+        self.code_word_length_slider = [float(self.code_word_length)]
+
+        try:
+            self.punch_cards = self._coerce_cards(
+                defaults.get(
+                    "punch_cards",
+                    [
+                        {
+                            "x": 1,
+                            "y": 1,
+                            "flipped": False,
+                            "shift": 1,
+                            "word": "",
+                        }
+                    ],
+                )
+            )
+        except Exception:
+            self.punch_cards = [PunchCardConfig()]
+
+        # Clear legacy single-card keys to avoid re-migration.
+        self.punch_row_storage = ""
+        self.punch_col_storage = ""
+
+        self._sync_punch_cards_storage()
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def reset_to_defaults(self):
+        defaults: dict[str, Any] = load_character_table_defaults()
+        self._apply_defaults(defaults)
+
+    @rx.event
+    def export_to_yaml(self):
+        doc: dict[str, Any] = {
+            "version": 1,
+            "text": self.text,
+            "table_width": int(self.table_width),
+            "code_word_length": int(self.code_word_length),
+            "punch_cards": self._cards_to_jsonable(self.punch_cards),
+        }
+        data = yaml.safe_dump(doc, sort_keys=False)
+        return rx.download(
+            data=data,
+            filename="character_table_config.yaml",
+            mime_type="text/yaml",
+        )
 
     @rx.event
     def on_load(self):

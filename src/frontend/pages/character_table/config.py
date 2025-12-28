@@ -76,7 +76,21 @@ def _punch_card_row(card, index) -> rx.Component:
 
 def config_section() -> rx.Component:
     return rx.vstack(
-        rx.heading("Configuration", size="5"),
+        rx.hstack(
+            rx.heading("Configuration", size="5"),
+            rx.spacer(),
+            rx.button(
+                "Reset to defaults",
+                on_click=CharacterTableState.reset_to_defaults,
+                variant="outline",
+            ),
+            rx.button(
+                "Export to YAML",
+                on_click=CharacterTableState.export_to_yaml,
+            ),
+            width="100%",
+            align="center",
+        ),
         rx.hstack(
             rx.text("Table width"),
             rx.text(CharacterTableState.table_width),
