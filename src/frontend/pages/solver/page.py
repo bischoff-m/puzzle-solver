@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import reflex as rx
 
 from .state import SolverState
