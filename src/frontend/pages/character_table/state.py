@@ -89,7 +89,7 @@ def build_character_table_figure(
         return fig
 
     n_rows = (len(chars) + width - 1) // width
-    padded = chars + [""] * (n_rows * width - len(chars))
+    padded = chars + [" "] * (n_rows * width - len(chars))
 
     mask_rows, mask_cols = punch_mask.shape
 
