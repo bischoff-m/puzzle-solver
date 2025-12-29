@@ -95,6 +95,48 @@ def load_character_table_defaults(
     return out
 
 
+def save_character_table_defaults(
+    config: dict[str, object],
+    path: str | Path = "character_table_defaults.yaml",
+) -> None:
+    """Write Character Table defaults to the backend YAML file."""
+
+    class _Dumper(yaml.SafeDumper):
+        pass
+
+    def _str_representer(dumper: yaml.SafeDumper, data: str):
+        # Prefer a literal block for multi-line text to avoid unreadable quoting
+        # (e.g., doubled apostrophes) and to preserve Unicode as-is.
+        if "\n" in data:
+            return dumper.represent_scalar(
+                "tag:yaml.org,2002:str", data, style="|"
+            )
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+    _Dumper.add_representer(str, _str_representer)
+
+    p = Path(path)
+    doc = dict(config)
+    # Keep the file schema stable.
+    doc.setdefault("version", 2)
+
+    # Make the default file stable + readable.
+    text = doc.get("text")
+    if isinstance(text, str):
+        # Avoid trailing whitespace/newlines turning into confusing empty lines.
+        doc["text"] = text.replace("\r\n", "\n").rstrip()
+
+    data = yaml.dump(
+        doc,
+        Dumper=_Dumper,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+        width=4096,
+    )
+    p.write_text(data, encoding="utf-8")
+
+
 def load_puzzle(path: str | Path = "puzzle.yaml") -> tuple[Board, list[Piece]]:
     """Load a puzzle YAML file and construct the concrete Board/Piece objects."""
     board_input, piece_inputs = load_puzzle_yaml(path)

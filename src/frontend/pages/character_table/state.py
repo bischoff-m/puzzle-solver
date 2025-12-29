@@ -4,10 +4,12 @@ from typing import Any
 
 import plotly.graph_objects as go
 import reflex as rx
-import yaml
 from pydantic import BaseModel
 
-from puzzle_solver.api import load_character_table_defaults
+from puzzle_solver.api import (
+    load_character_table_defaults,
+    save_character_table_defaults,
+)
 from puzzle_solver.plotting import _qualitative_palette
 
 from .punch_card import mask as punch_mask
@@ -654,7 +656,7 @@ class CharacterTableState(rx.State):
         self._apply_defaults(defaults)
 
     @rx.event
-    def export_to_yaml(self):
+    def set_default(self):
         doc: dict[str, Any] = {
             "version": 2,
             "text": self.text,
@@ -663,12 +665,7 @@ class CharacterTableState(rx.State):
             "show_encrypted": bool(self.show_encrypted),
             "punch_cards": self._cards_to_jsonable(self.punch_cards),
         }
-        data = yaml.safe_dump(doc, sort_keys=False)
-        return rx.download(
-            data=data,
-            filename="character_table_config.yaml",
-            mime_type="text/yaml",
-        )
+        save_character_table_defaults(doc)
 
     @rx.event
     def on_load(self):

@@ -94,8 +94,8 @@ def config_section() -> rx.Component:
                 variant="outline",
             ),
             rx.button(
-                "Export to YAML",
-                on_click=CharacterTableState.export_to_yaml,
+                "Set Default",
+                on_click=CharacterTableState.set_default,
             ),
             width="100%",
             align="center",

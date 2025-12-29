@@ -1,5 +1,5 @@
-version: 1
-text: |
+version: 2
+text: |-
   Probier's mal mit Gemütlichkeit
   Mit Ruhe und Gemütlichkeit
   Jagst du den Alltag und die Sorgen weg
@@ -41,13 +41,19 @@ text: |
   Hast du das jetzt kapiert? (Vollkommen, danke Balou!)
   Denn mit Gemütlichkeit kommt auch das Glück zu dir (Du hast wirklich Recht)
   Es kommt zu dir
-table_width: 37
-code_word: "KAKTUS"
-show_encrypted: false
+table_width: 32
+code_word: KAKTUS
+show_encrypted: true
 punch_cards:
-  - x: 24
-    y: 6
-    flipped: false
-    isActive: true
-    shift: 1
-    word: ""
+- x: 24
+  y: 6
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
+- x: 5
+  y: 11
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
