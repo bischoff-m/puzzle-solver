@@ -8,78 +8,106 @@ _LABEL_W = "10em"
 
 
 def _punch_card_row(card, index) -> rx.Component:
-    return rx.vstack(
-        rx.hstack(
-            rx.heading(rx.text("Punch card "), rx.text(index + 1), size="4"),
-            rx.spacer(),
-            rx.button(
-                "Remove",
-                on_click=CharacterTableState.remove_punch_card(index),
-                size="2",
-                variant="outline",
-            ),
-            width="100%",
-            align="center",
+    return rx.accordion.item(
+        rx.accordion.header(
+            rx.accordion.trigger(
+                rx.hstack(
+                    rx.heading(rx.text(index + 1), size="4"),
+                    rx.spacer(),
+                    rx.accordion.icon(),
+                    width="100%",
+                    align="center",
+                ),
+                width="100%",
+                style={"backgroundColor": "transparent"},
+            )
         ),
-        int_control(
-            label="X",
-            value=card.x,
-            min_=1,
-            max_=200,
-            label_width=_LABEL_W,
-            on_dec=CharacterTableState.dec_punch_card_x(index),
-            on_inc=CharacterTableState.inc_punch_card_x(index),
-            on_change_slider=CharacterTableState.set_punch_card_x_slider(index),
-            on_change_text=CharacterTableState.set_punch_card_x(index),
+        rx.accordion.content(
+            rx.vstack(
+                rx.hstack(
+                    rx.spacer(),
+                    rx.button(
+                        "Remove",
+                        on_click=CharacterTableState.remove_punch_card(index),
+                        size="2",
+                        variant="outline",
+                    ),
+                    width="100%",
+                    align="center",
+                ),
+                int_control(
+                    label="X",
+                    value=card.x,
+                    min_=1,
+                    max_=200,
+                    label_width=_LABEL_W,
+                    on_dec=CharacterTableState.dec_punch_card_x(index),
+                    on_inc=CharacterTableState.inc_punch_card_x(index),
+                    on_change_slider=CharacterTableState.set_punch_card_x_slider(
+                        index
+                    ),
+                    on_change_text=CharacterTableState.set_punch_card_x(index),
+                ),
+                int_control(
+                    label="Y",
+                    value=card.y,
+                    min_=1,
+                    max_=200,
+                    label_width=_LABEL_W,
+                    on_dec=CharacterTableState.dec_punch_card_y(index),
+                    on_inc=CharacterTableState.inc_punch_card_y(index),
+                    on_change_slider=CharacterTableState.set_punch_card_y_slider(
+                        index
+                    ),
+                    on_change_text=CharacterTableState.set_punch_card_y(index),
+                ),
+                int_control(
+                    label="Shift",
+                    value=card.shift,
+                    min_=1,
+                    max_=200,
+                    label_width=_LABEL_W,
+                    on_dec=CharacterTableState.dec_punch_card_shift(index),
+                    on_inc=CharacterTableState.inc_punch_card_shift(index),
+                    on_change_slider=CharacterTableState.set_punch_card_shift_slider(
+                        index
+                    ),
+                    on_change_text=CharacterTableState.set_punch_card_shift(
+                        index
+                    ),
+                ),
+                rx.hstack(
+                    rx.text("Word", width=_LABEL_W, text_align="right"),
+                    rx.input(
+                        value=card.word,
+                        on_change=CharacterTableState.set_punch_card_word(
+                            index
+                        ),
+                        placeholder="",
+                    ),
+                    rx.checkbox(
+                        "Active",
+                        checked=card.is_active,
+                        on_change=CharacterTableState.set_punch_card_active(
+                            index
+                        ),
+                    ),
+                    rx.checkbox(
+                        "Flipped",
+                        checked=card.flipped,
+                        on_change=CharacterTableState.set_punch_card_flipped(
+                            index
+                        ),
+                    ),
+                    spacing="3",
+                    width="100%",
+                    align="center",
+                ),
+                width="100%",
+                spacing="2",
+            )
         ),
-        int_control(
-            label="Y",
-            value=card.y,
-            min_=1,
-            max_=200,
-            label_width=_LABEL_W,
-            on_dec=CharacterTableState.dec_punch_card_y(index),
-            on_inc=CharacterTableState.inc_punch_card_y(index),
-            on_change_slider=CharacterTableState.set_punch_card_y_slider(index),
-            on_change_text=CharacterTableState.set_punch_card_y(index),
-        ),
-        int_control(
-            label="Shift",
-            value=card.shift,
-            min_=1,
-            max_=200,
-            label_width=_LABEL_W,
-            on_dec=CharacterTableState.dec_punch_card_shift(index),
-            on_inc=CharacterTableState.inc_punch_card_shift(index),
-            on_change_slider=CharacterTableState.set_punch_card_shift_slider(
-                index
-            ),
-            on_change_text=CharacterTableState.set_punch_card_shift(index),
-        ),
-        rx.hstack(
-            rx.text("Word", width=_LABEL_W, text_align="right"),
-            rx.input(
-                value=card.word,
-                on_change=CharacterTableState.set_punch_card_word(index),
-                placeholder="",
-            ),
-            rx.checkbox(
-                "Active",
-                checked=card.is_active,
-                on_change=CharacterTableState.set_punch_card_active(index),
-            ),
-            rx.checkbox(
-                "Flipped",
-                checked=card.flipped,
-                on_change=CharacterTableState.set_punch_card_flipped(index),
-            ),
-            spacing="3",
-            width="100%",
-            align="center",
-        ),
-        rx.divider(),
-        width="100%",
-        spacing="2",
+        value=f"punch-card-{index}",
     )
 
 
@@ -138,7 +166,13 @@ def config_section() -> rx.Component:
             width="100%",
             align="center",
         ),
-        rx.foreach(CharacterTableState.punch_cards, _punch_card_row),
+        rx.accordion.root(
+            rx.foreach(CharacterTableState.punch_cards, _punch_card_row),
+            type="multiple",
+            collapsible=True,
+            width="100%",
+            variant="outline",
+        ),
         width="100%",
         spacing="2",
     )

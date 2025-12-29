@@ -57,3 +57,27 @@ punch_cards:
   isActive: true
   shift: 1
   word: ''
+- x: 11
+  y: 15
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
+- x: 6
+  y: 26
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
+- x: 20
+  y: 22
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
+- x: 14
+  y: 5
+  flipped: false
+  isActive: true
+  shift: 1
+  word: ''
