@@ -70,9 +70,33 @@ def page() -> rx.Component:
                 rx.plotly(
                     data=SolverState.flat_figure, use_resize_handler=True
                 ),
-                rx.cond(
-                    SolverState.flat_error != "",
-                    rx.text(SolverState.flat_error),
+                rx.vstack(
+                    rx.cond(
+                        SolverState.flat_error != "",
+                        rx.text(SolverState.flat_error),
+                    ),
+                    rx.color_mode_cond(
+                        rx.plotly(
+                            data=SolverState.flat_board_figure_light,
+                            use_resize_handler=True,
+                        ),
+                        rx.plotly(
+                            data=SolverState.flat_board_figure_dark,
+                            use_resize_handler=True,
+                        ),
+                    ),
+                    rx.color_mode_cond(
+                        rx.plotly(
+                            data=SolverState.flat_pieces_figure_light,
+                            use_resize_handler=True,
+                        ),
+                        rx.plotly(
+                            data=SolverState.flat_pieces_figure_dark,
+                            use_resize_handler=True,
+                        ),
+                    ),
+                    spacing="3",
+                    width="100%",
                 ),
             ),
             rx.divider(),
@@ -115,5 +139,6 @@ def page() -> rx.Component:
         ),
         width="100%",
         max_width="1100px",
+        margin_x="auto",
         padding_y="2em",
     )

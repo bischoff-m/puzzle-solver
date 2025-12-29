@@ -48,6 +48,23 @@ def _qualitative_palette(n: int) -> list[str]:
     return [base[i % len(base)] for i in range(n)]
 
 
+def _character_mapping_theme(theme: str) -> dict[str, str]:
+    theme = str(theme or "light").lower()
+    if theme == "dark":
+        return {
+            "cell_bg": "rgba(255,255,255,0.15)",
+            "label_bg": "rgba(255,255,255,0.25)",
+            "grid_bg": "rgba(0,0,0,1)",
+            "text_color": "white",
+        }
+    return {
+        "cell_bg": "rgba(0,0,0,0.15)",
+        "label_bg": "rgba(0,0,0,0.25)",
+        "grid_bg": "rgba(255,255,255,1)",
+        "text_color": "black",
+    }
+
+
 def plot_flat_solution(
     board: Board, solution: dict[str, set[Cell]]
 ) -> go.Figure:
@@ -101,6 +118,121 @@ def plot_flat_solution(
         zeroline=False,
         constrain="domain",
     )
+    fig.update_yaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        autorange="reversed",
+    )
+    return fig
+
+
+def plot_flat_board(board: Board, *, theme: str = "light") -> go.Figure:
+    """Plot just the board (frame cells) without placing any pieces."""
+
+    board_filled = grid_to_cells(board.grid)
+    board_w, board_h = 10, 7
+
+    grid_int = np.zeros((board_h, board_w), dtype=int)
+    for x, y in board_filled:
+        grid_int[y, x] = 1
+
+    t = _character_mapping_theme(theme)
+    colorscale = _discrete_colorscale([t["cell_bg"], t["label_bg"]])
+
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=grid_int,
+                zmin=0,
+                zmax=1,
+                colorscale=colorscale,
+                showscale=False,
+                hoverinfo="skip",
+                xgap=1,
+                ygap=1,
+            )
+        ]
+    )
+    fig.update_layout(
+        title="Board",
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=350,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=t["grid_bg"],
+        font=dict(color=t["text_color"]),
+    )
+    fig.update_xaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        constrain="domain",
+    )
+    fig.update_yaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        autorange="reversed",
+    )
+    return fig
+
+
+def plot_pieces_row(
+    pieces: list[Piece], *, margin: int = 1, theme: str = "light"
+) -> go.Figure:
+    """Plot all pieces next to each other in one row.
+
+    Each piece is rendered as a 4x4 grid. Pieces are laid out left-to-right
+    with `margin` empty columns between them.
+    """
+
+    margin = max(0, int(margin))
+    if not pieces:
+        return go.Figure()
+
+    pieces_sorted = sorted(pieces, key=lambda p: p.name)
+    n = len(pieces_sorted)
+    h, w_piece = 4, 4
+    w = n * w_piece + (n - 1) * margin
+
+    grid_int = np.zeros((h, w), dtype=int)
+    for i, p in enumerate(pieces_sorted):
+        x0 = i * (w_piece + margin)
+        for y in range(4):
+            for x in range(4):
+                if p.grid[y][x]:
+                    grid_int[y, x0 + x] = i + 1
+
+    t = _character_mapping_theme(theme)
+    palette = _qualitative_palette(max(6, n))[:n]
+    colors = [t["cell_bg"], *palette]
+    colorscale = _discrete_colorscale(colors)
+
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=grid_int,
+                zmin=0,
+                zmax=n,
+                colorscale=colorscale,
+                showscale=False,
+                hoverinfo="skip",
+                xgap=1,
+                ygap=1,
+            )
+        ]
+    )
+    fig.update_layout(
+        title="Pieces",
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=260,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=t["grid_bg"],
+        font=dict(color=t["text_color"]),
+    )
+    fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
     fig.update_yaxes(
         showticklabels=False,
         showgrid=False,

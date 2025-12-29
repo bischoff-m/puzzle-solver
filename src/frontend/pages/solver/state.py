@@ -8,7 +8,12 @@ from puzzle_solver.api import (
 )
 from puzzle_solver.cube_solver import solve_cube_pool
 from puzzle_solver.flat_solver import solve_flat_pool
-from puzzle_solver.plotting import plot_cube_solution, plot_flat_solution
+from puzzle_solver.plotting import (
+    plot_cube_solution,
+    plot_flat_board,
+    plot_flat_solution,
+    plot_pieces_row,
+)
 
 
 class SolverState(rx.State):
@@ -18,6 +23,11 @@ class SolverState(rx.State):
 
     flat_figure: go.Figure = go.Figure()
     cube_figure: go.Figure = go.Figure()
+
+    flat_board_figure_light: go.Figure = go.Figure()
+    flat_board_figure_dark: go.Figure = go.Figure()
+    flat_pieces_figure_light: go.Figure = go.Figure()
+    flat_pieces_figure_dark: go.Figure = go.Figure()
 
     flat_solutions: list[dict[str, list[list[int]]]] = []
     cube_solutions: list[dict[str, list[object]]] = []
@@ -147,9 +157,23 @@ class SolverState(rx.State):
             self.cube_solution_index = 0
             self.flat_figure = go.Figure()
             self.cube_figure = go.Figure()
+            self.flat_board_figure_light = go.Figure()
+            self.flat_board_figure_dark = go.Figure()
+            self.flat_pieces_figure_light = go.Figure()
+            self.flat_pieces_figure_dark = go.Figure()
             self.solving_flat = False
             self.solving_cube = False
             return
+
+        # Flat fallback figures (used when flat has no solutions).
+        self.flat_board_figure_light = plot_flat_board(board, theme="light")
+        self.flat_board_figure_dark = plot_flat_board(board, theme="dark")
+        self.flat_pieces_figure_light = plot_pieces_row(
+            pieces, margin=1, theme="light"
+        )
+        self.flat_pieces_figure_dark = plot_pieces_row(
+            pieces, margin=1, theme="dark"
+        )
 
         # Solve flat.
         try:
