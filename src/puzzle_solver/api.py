@@ -23,7 +23,8 @@ def load_character_table_defaults(
     defaults: dict[str, object] = {
         "text": "",
         "table_width": 20,
-        "code_word_length": 5,
+        "code_word": "",
+        "show_encrypted": False,
         "punch_cards": [
             {
                 "x": 1,
@@ -59,8 +60,16 @@ def load_character_table_defaults(
 
     if "table_width" in raw:
         out["table_width"] = _int_ge_1(raw.get("table_width"), 20)
-    if "code_word_length" in raw:
-        out["code_word_length"] = _int_ge_1(raw.get("code_word_length"), 5)
+
+    cw = raw.get("code_word")
+    if isinstance(cw, str) and cw.strip() != "":
+        out["code_word"] = cw.upper()
+
+    if "show_encrypted" in raw:
+        out["show_encrypted"] = bool(raw.get("show_encrypted"))
+
+    # Backward compatibility: accept the old field, but ignore it.
+    # (Older configs stored only a length; the UI now uses the full code word.)
 
     pcs = raw.get("punch_cards")
     if isinstance(pcs, list):

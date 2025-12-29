@@ -65,12 +65,12 @@ def _punch_card_row(card, index) -> rx.Component:
             ),
             rx.checkbox(
                 "Active",
-                is_checked=card.is_active,
+                checked=card.is_active,
                 on_change=CharacterTableState.set_punch_card_active(index),
             ),
             rx.checkbox(
                 "Flipped",
-                is_checked=card.flipped,
+                checked=card.flipped,
                 on_change=CharacterTableState.set_punch_card_flipped(index),
             ),
             spacing="3",
@@ -112,17 +112,21 @@ def config_section() -> rx.Component:
             on_change_slider=CharacterTableState.set_table_width,
             on_change_text=CharacterTableState.set_table_width_input,
         ),
-        int_control(
-            label="Code word length",
-            value=CharacterTableState.code_word_length,
-            min_=1,
-            max_=40,
-            slider_value=CharacterTableState.code_word_length_slider,
-            label_width=_LABEL_W,
-            on_dec=CharacterTableState.dec_code_word_length,
-            on_inc=CharacterTableState.inc_code_word_length,
-            on_change_slider=CharacterTableState.set_code_word_length,
-            on_change_text=CharacterTableState.set_code_word_length_input,
+        rx.hstack(
+            rx.text("Code word", width=_LABEL_W, text_align="right"),
+            rx.input(
+                value=CharacterTableState.code_word,
+                on_change=CharacterTableState.set_code_word,
+                placeholder="",
+            ),
+            rx.checkbox(
+                "Encrypted",
+                checked=CharacterTableState.show_encrypted,
+                on_change=CharacterTableState.set_show_encrypted,
+            ),
+            spacing="3",
+            width="100%",
+            align="center",
         ),
         rx.divider(),
         rx.hstack(

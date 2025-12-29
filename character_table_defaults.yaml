@@ -42,7 +42,8 @@ text: |
   Denn mit Gemütlichkeit kommt auch das Glück zu dir (Du hast wirklich Recht)
   Es kommt zu dir
 table_width: 37
-code_word_length: 6
+code_word: "KAKTUS"
+show_encrypted: false
 punch_cards:
   - x: 24
     y: 6

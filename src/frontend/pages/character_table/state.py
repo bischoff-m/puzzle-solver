@@ -51,24 +51,60 @@ def _hex_to_rgba(color: str, *, alpha: float) -> str:
 
 
 def preprocess_text(text: str) -> str:
-    # Replace all whitespace with a single space
+    # Normalize all whitespace (including line breaks) to single spaces.
+    # Do not remove whitespace or punctuation.
     text = re.sub(r"\s+", " ", text).strip()
-    # Remove punctuation
-    text = re.sub(r"[^\w\s]", "", text)
-    # Split by words and join back with single spaces
-    words = re.findall(r"\w+", text)
-    return " ".join(words).upper()
+    return text.upper()
+
+
+def compute_character_alphabet(text: str, *, code_word: str = "") -> list[str]:
+    """Compute an ordered alphabet for shifting.
+
+    - Starts with A-Z in order (so 'A' is always first).
+    - Then appends any remaining unique characters from the (preprocessed) text
+      and code word in deterministic (Unicode) order.
+    """
+
+    letters = [chr(ord("A") + i) for i in range(26)]
+    unique = set(text)
+    unique.update(code_word)
+
+    remaining = sorted(ch for ch in unique if ch not in set(letters))
+    return letters + remaining
+
+
+def vigenere_encrypt(text: str, *, code_word: str) -> str:
+    """Encrypt text using a Vigenere-style shift over the computed alphabet."""
+
+    code_word = (code_word or "A").upper()
+    alphabet = compute_character_alphabet(text, code_word=code_word)
+    index = {ch: i for i, ch in enumerate(alphabet)}
+
+    key_indices = [index.get(ch, 0) for ch in code_word]
+    if not key_indices:
+        key_indices = [0]
+
+    out: list[str] = []
+    n = len(alphabet)
+    for i, ch in enumerate(text):
+        ci = index.get(ch)
+        if ci is None:
+            out.append(ch)
+            continue
+        shift = key_indices[i % len(key_indices)]
+        out.append(alphabet[(ci + shift) % n])
+    return "".join(out)
 
 
 def build_character_table_figure(
     *,
     text: str,
     width: int,
-    code_word_length: int,
+    code_word: str,
     punch_cards: list[PunchCardConfig],
 ) -> go.Figure:
     width = max(1, min(200, int(width)))
-    n_colors = max(1, int(code_word_length))
+    n_colors = max(1, len(str(code_word or "")))
     palette = _qualitative_palette(n_colors)
 
     cell_px = 28
@@ -225,10 +261,6 @@ class CharacterTableState(rx.State):
     # Legacy per-field storage keys.
     table_width_storage: str = rx.LocalStorage("", name="character_table_width")
 
-    code_word_length_storage: str = rx.LocalStorage(
-        "", name="character_table_code_word_length"
-    )
-
     # New multi-instance punch card config (JSON list).
     punch_cards_storage: str = rx.LocalStorage(
         "", name="character_table_punch_cards"
@@ -245,8 +277,8 @@ class CharacterTableState(rx.State):
     table_width: int = 20
     table_width_slider: list[float] = [20.0]
 
-    code_word_length: int = 5
-    code_word_length_slider: list[float] = [5.0]
+    code_word: str = ""
+    show_encrypted: bool = False
 
     punch_cards: list[PunchCardConfig] = []
 
@@ -254,10 +286,15 @@ class CharacterTableState(rx.State):
 
     def _rebuild(self) -> None:
         processed = preprocess_text(self.text)
+        display = (
+            vigenere_encrypt(processed, code_word=self.code_word)
+            if bool(self.show_encrypted)
+            else processed
+        )
         self.figure = build_character_table_figure(
-            text=processed,
+            text=display,
             width=self.table_width,
-            code_word_length=self.code_word_length,
+            code_word=self.code_word,
             punch_cards=self.punch_cards,
         )
 
@@ -287,7 +324,8 @@ class CharacterTableState(rx.State):
             {
                 "text": self.text,
                 "table_width": int(self.table_width),
-                "code_word_length": int(self.code_word_length),
+                "code_word": str(self.code_word),
+                "show_encrypted": bool(self.show_encrypted),
                 "punch_cards": self._cards_to_jsonable(self.punch_cards),
             }
         )
@@ -355,11 +393,14 @@ class CharacterTableState(rx.State):
         self.table_width_storage = str(self.table_width)
         self.table_width_slider = [float(self.table_width)]
 
-        self.code_word_length = self._coerce_int_ge_1(
-            defaults.get("code_word_length"), default=5
-        )
-        self.code_word_length_storage = str(self.code_word_length)
-        self.code_word_length_slider = [float(self.code_word_length)]
+        cw = defaults.get("code_word")
+        if isinstance(cw, str) and cw.strip() != "":
+            self.code_word = cw.upper()
+        else:
+            self.code_word = ""
+
+        se = defaults.get("show_encrypted")
+        self.show_encrypted = bool(se) if se is not None else False
 
         try:
             self.punch_cards = self._coerce_cards(
@@ -396,10 +437,11 @@ class CharacterTableState(rx.State):
     @rx.event
     def export_to_yaml(self):
         doc: dict[str, Any] = {
-            "version": 1,
+            "version": 2,
             "text": self.text,
             "table_width": int(self.table_width),
-            "code_word_length": int(self.code_word_length),
+            "code_word": str(self.code_word),
+            "show_encrypted": bool(self.show_encrypted),
             "punch_cards": self._cards_to_jsonable(self.punch_cards),
         }
         data = yaml.safe_dump(doc, sort_keys=False)
@@ -432,14 +474,19 @@ class CharacterTableState(rx.State):
                     self.table_width_storage = str(self.table_width)
                     self.table_width_slider = [float(self.table_width)]
 
-                    self.code_word_length = self._coerce_int_ge_1(
-                        cfg.get("code_word_length"),
-                        default=_defaults_int("code_word_length", 5),
-                    )
-                    self.code_word_length_storage = str(self.code_word_length)
-                    self.code_word_length_slider = [
-                        float(self.code_word_length)
-                    ]
+                    cw = cfg.get("code_word")
+                    if isinstance(cw, str) and cw.strip() != "":
+                        self.code_word = cw.upper()
+                    else:
+                        d = defaults.get("code_word")
+                        self.code_word = (
+                            d.upper()
+                            if isinstance(d, str) and d.strip() != ""
+                            else ""
+                        )
+
+                    se = cfg.get("show_encrypted")
+                    self.show_encrypted = bool(se) if se is not None else False
 
                     self.punch_cards = self._coerce_cards(
                         cfg.get("punch_cards", defaults.get("punch_cards", []))
@@ -465,16 +512,13 @@ class CharacterTableState(rx.State):
         self.table_width_storage = str(width)
         self.table_width_slider = [float(width)]
 
-        if self.code_word_length_storage in {None, ""}:
-            n = _defaults_int("code_word_length", 5)
-        else:
-            n = self._coerce_int_ge_1(
-                self.code_word_length_storage,
-                default=_defaults_int("code_word_length", 5),
-            )
-        self.code_word_length = n
-        self.code_word_length_storage = str(n)
-        self.code_word_length_slider = [float(n)]
+        d = defaults.get("code_word")
+        self.code_word = (
+            d.upper() if isinstance(d, str) and d.strip() != "" else ""
+        )
+
+        se = defaults.get("show_encrypted")
+        self.show_encrypted = bool(se) if se is not None else False
 
         # Punch cards: prefer new JSON storage; if empty, try migrating legacy row/col;
         # otherwise fall back to backend YAML defaults.
@@ -516,6 +560,18 @@ class CharacterTableState(rx.State):
         self._rebuild()
 
     @rx.event
+    def set_code_word(self, value: str):
+        self.code_word = str(value).upper()
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def set_show_encrypted(self, value: bool):
+        self.show_encrypted = bool(value)
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
     def set_table_width(self, value: list[float]):
         raw = value[0] if value else 1
         try:
@@ -553,48 +609,6 @@ class CharacterTableState(rx.State):
         self.table_width = min(80, int(self.table_width) + 1)
         self.table_width_storage = str(self.table_width)
         self.table_width_slider = [float(self.table_width)]
-        self._sync_config_storage()
-        self._rebuild()
-
-    @rx.event
-    def set_code_word_length(self, value: list[float]):
-        raw = value[0] if value else 1
-        try:
-            n = int(float(raw))
-        except (TypeError, ValueError):
-            n = 1
-
-        n = max(1, min(40, n))
-
-        self.code_word_length = n
-        self.code_word_length_storage = str(n)
-        self.code_word_length_slider = [float(n)]
-        self._sync_config_storage()
-        self._rebuild()
-
-    @rx.event
-    def set_code_word_length_input(self, value: str):
-        n = self._coerce_int_ge_1(value, default=1)
-        n = max(1, min(40, n))
-        self.code_word_length = n
-        self.code_word_length_storage = str(n)
-        self.code_word_length_slider = [float(n)]
-        self._sync_config_storage()
-        self._rebuild()
-
-    @rx.event
-    def dec_code_word_length(self):
-        self.code_word_length = max(1, int(self.code_word_length) - 1)
-        self.code_word_length_storage = str(self.code_word_length)
-        self.code_word_length_slider = [float(self.code_word_length)]
-        self._sync_config_storage()
-        self._rebuild()
-
-    @rx.event
-    def inc_code_word_length(self):
-        self.code_word_length = min(40, int(self.code_word_length) + 1)
-        self.code_word_length_storage = str(self.code_word_length)
-        self.code_word_length_slider = [float(self.code_word_length)]
         self._sync_config_storage()
         self._rebuild()
 
