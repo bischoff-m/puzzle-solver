@@ -8,7 +8,7 @@ from .flat_solver import solve_flat_pool
 from .grids import board_grid_from_border30, piece_grid_from_border12
 from .plotting import plot_cube_solution, plot_flat_solution
 from .types import Board, Piece
-from .yaml_io import load_puzzle_yaml
+from .yaml_io import flip_piece_border12_reverse_shift, load_puzzle_yaml
 
 
 def _repo_root() -> Path:
@@ -92,7 +92,16 @@ def load_character_table_defaults(
 
     def _int_ge_1(v: object, fallback: int) -> int:
         try:
-            n = int(float(v))
+            if isinstance(v, bool) or v is None:
+                n = fallback
+            elif isinstance(v, int):
+                n = v
+            elif isinstance(v, float):
+                n = int(v)
+            elif isinstance(v, str):
+                n = int(float(v))
+            else:
+                n = fallback
         except (TypeError, ValueError):
             n = fallback
         return max(1, n)
@@ -178,13 +187,52 @@ def save_character_table_defaults(
 
 def load_puzzle(path: str | Path = "puzzle.yaml") -> tuple[Board, list[Piece]]:
     """Load a puzzle YAML file and construct the concrete Board/Piece objects."""
-    board_input, piece_inputs = load_puzzle_yaml(path)
-    pieces = [
-        Piece(p.name, piece_grid_from_border12(p.border12))
-        for p in piece_inputs
-    ]
-    board = Board(board_grid_from_border30(board_input.border30))
+    board, pieces, _is_flipped = load_puzzle_with_meta(path)
     return board, pieces
+
+
+def load_puzzle_with_meta(
+    path: str | Path = "puzzle.yaml",
+) -> tuple[Board, list[Piece], bool]:
+    """Load a puzzle and also return its YAML config metadata."""
+
+    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+
+    pieces: list[Piece] = []
+    for p in piece_inputs:
+        border12 = p.border12
+        if bool(is_flipped):
+            border12 = flip_piece_border12_reverse_shift(border12)
+        pieces.append(Piece(p.name, piece_grid_from_border12(border12)))
+
+    board = Board(board_grid_from_border30(board_input.border30))
+    return board, pieces, bool(is_flipped)
+
+
+def get_puzzle_is_flipped(name: str) -> bool:
+    p = resolve_puzzle_asset(name)
+    raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        return False
+    return bool(raw.get("isFlipped", False))
+
+
+def set_puzzle_is_flipped(name: str, *, is_flipped: bool) -> None:
+    p = resolve_puzzle_asset(name)
+    raw = yaml.safe_load(p.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("YAML root must be a mapping")
+
+    raw["isFlipped"] = bool(is_flipped)
+
+    data = yaml.safe_dump(
+        raw,
+        sort_keys=False,
+        allow_unicode=True,
+        default_flow_style=False,
+        width=4096,
+    )
+    p.write_text(data, encoding="utf-8")
 
 
 def solve_and_plot_flat(

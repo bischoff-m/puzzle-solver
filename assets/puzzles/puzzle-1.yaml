@@ -1,118 +1,119 @@
 version: 1
+isFlipped: false
 board:
   border30:
-  - true
-  - false
-  - true
-  - false
-  - false
-  - true
-  - false
-  - true
-  - false
-  - true
-  - true
-  - false
-  - true
-  - true
-  - true
-  - false
-  - false
-  - true
-  - false
-  - false
-  - false
-  - true
-  - true
-  - false
-  - false
-  - false
-  - true
-  - false
-  - true
-  - false
+    - true
+    - false
+    - true
+    - false
+    - false
+    - true
+    - false
+    - true
+    - false
+    - true
+    - true
+    - false
+    - true
+    - true
+    - true
+    - false
+    - false
+    - true
+    - false
+    - false
+    - false
+    - true
+    - true
+    - false
+    - false
+    - false
+    - true
+    - false
+    - true
+    - false
 pieces:
-- name: A
-  border12:
-  - false
-  - false
-  - true
-  - true
-  - true
-  - false
-  - false
-  - false
-  - false
-  - true
-  - true
-  - false
-- name: B
-  border12:
-  - true
-  - true
-  - false
-  - false
-  - false
-  - true
-  - false
-  - false
-  - false
-  - true
-  - true
-  - false
-- name: C
-  border12:
-  - true
-  - false
-  - true
-  - false
-  - true
-  - false
-  - true
-  - true
-  - false
-  - false
-  - true
-  - true
-- name: D
-  border12:
-  - false
-  - false
-  - true
-  - false
-  - false
-  - true
-  - false
-  - false
-  - true
-  - true
-  - false
-  - false
-- name: E
-  border12:
-  - false
-  - true
-  - false
-  - false
-  - true
-  - false
-  - false
-  - true
-  - false
-  - false
-  - true
-  - true
-- name: F
-  border12:
-  - false
-  - true
-  - false
-  - true
-  - true
-  - true
-  - false
-  - true
-  - false
-  - false
-  - true
-  - false
+  - name: A
+    border12:
+      - false
+      - false
+      - true
+      - true
+      - true
+      - false
+      - false
+      - false
+      - false
+      - true
+      - true
+      - false
+  - name: B
+    border12:
+      - true
+      - true
+      - false
+      - false
+      - false
+      - true
+      - false
+      - false
+      - false
+      - true
+      - true
+      - false
+  - name: C
+    border12:
+      - true
+      - false
+      - true
+      - false
+      - true
+      - false
+      - true
+      - true
+      - false
+      - false
+      - true
+      - true
+  - name: D
+    border12:
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - true
+      - false
+      - false
+  - name: E
+    border12:
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - true
+  - name: F
+    border12:
+      - false
+      - true
+      - false
+      - true
+      - true
+      - true
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false

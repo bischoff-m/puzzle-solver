@@ -2,9 +2,14 @@ import plotly.graph_objects as go
 import reflex as rx
 
 from puzzle_solver.api import (
+    get_puzzle_is_flipped,
     list_puzzle_assets,
     load_puzzle,
+    load_puzzle_with_meta,
     resolve_puzzle_asset,
+)
+from puzzle_solver.api import (
+    set_puzzle_is_flipped as api_set_puzzle_is_flipped,
 )
 from puzzle_solver.cube_solver import solve_cube_pool
 from puzzle_solver.flat_solver import solve_flat_pool
@@ -14,12 +19,15 @@ from puzzle_solver.plotting import (
     plot_flat_solution,
     plot_pieces_row,
 )
+from puzzle_solver.types import Face
 
 
 class SolverState(rx.State):
     puzzles: list[str] = []
     selected_puzzle: str = ""
     max_solutions: int = 50
+
+    puzzle_is_flipped: bool = False
 
     flat_figure: go.Figure = go.Figure()
     cube_figure: go.Figure = go.Figure()
@@ -49,7 +57,25 @@ class SolverState(rx.State):
         if not self.selected_puzzle and self.puzzles:
             self.selected_puzzle = self.puzzles[0]
         if self.selected_puzzle:
+            self.puzzle_is_flipped = bool(
+                get_puzzle_is_flipped(self.selected_puzzle)
+            )
+        if self.selected_puzzle:
             yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def set_puzzle_is_flipped(self, value: bool):
+        try:
+            api_set_puzzle_is_flipped(
+                self.selected_puzzle,
+                is_flipped=bool(value),
+            )
+        except Exception as e:
+            msg = str(e)
+            self.flat_error = msg
+            self.cube_error = msg
+            return
+        yield SolverState.select_puzzle(self.selected_puzzle)
 
     def _flat_sol_from_json(
         self, sol: dict[str, list[list[int]]]
@@ -71,19 +97,31 @@ class SolverState(rx.State):
 
     def _cube_sol_from_json(
         self, sol: dict[str, list[object]]
-    ) -> dict[str, tuple[str, int]]:
-        out: dict[str, tuple[str, int]] = {}
+    ) -> dict[str, tuple[Face, int]]:
+        out: dict[str, tuple[Face, int]] = {}
         for name, placement in sol.items():
-            face: str = "+Z"
+            face: Face = "+Z"
             rot: int = 0
             if (
                 isinstance(placement, list)
                 and len(placement) == 2
                 and isinstance(placement[0], str)
             ):
-                face = placement[0]
+                cand = placement[0]
+                if cand in {"+X", "-X", "+Y", "-Y", "+Z", "-Z"}:
+                    face = cand  # type: ignore[assignment]
                 try:
-                    rot = int(placement[1])
+                    v = placement[1]
+                    if isinstance(v, bool) or v is None:
+                        rot = 0
+                    elif isinstance(v, int):
+                        rot = v
+                    elif isinstance(v, float):
+                        rot = int(v)
+                    elif isinstance(v, str):
+                        rot = int(float(v))
+                    else:
+                        rot = 0
                 except (TypeError, ValueError):
                     rot = 0
             out[str(name)] = (face, rot)
@@ -144,7 +182,8 @@ class SolverState(rx.State):
 
         # Load once for solving/plotting.
         try:
-            board, pieces = load_puzzle(path)
+            board, pieces, is_flipped = load_puzzle_with_meta(path)
+            self.puzzle_is_flipped = bool(is_flipped)
         except Exception as e:
             msg = str(e)
             self.flat_error = msg
