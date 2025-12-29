@@ -1,0 +1,119 @@
+version: 1
+board:
+  border30:
+    - true
+    - true
+    - false
+    - true
+    - true
+    - true
+    - false
+    - false
+    - false
+    - false
+    - true
+    - false
+    - false
+    - true
+    - true
+    - true
+    - false
+    - true
+    - false
+    - false
+    - true
+    - false
+    - false
+    - true
+    - true
+    - false
+    - true
+    - false
+    - false
+    - false
+    - false
+pieces:
+  - name: A
+    border12:
+      - true
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+  - name: B
+    border12:
+      - true
+      - true
+      - true
+      - false
+      - false
+      - true
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+  - name: C
+    border12:
+      - true
+      - false
+      - false
+      - false
+      - true
+      - false
+      - true
+      - true
+      - true
+      - true
+      - false
+      - true
+  - name: D
+    border12:
+      - false
+      - false
+      - true
+      - false
+      - true
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true
+      - true
+  - name: E
+    border12:
+      - true
+      - false
+      - true
+      - true
+      - false
+      - true
+      - false
+      - false
+      - false
+      - false
+      - false
+      - true
+  - name: F
+    border12:
+      - false
+      - false
+      - false
+      - true
+      - true
+      - false
+      - false
+      - false
+      - true
+      - false
+      - false
+      - true

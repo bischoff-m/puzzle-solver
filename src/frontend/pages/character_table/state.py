@@ -87,14 +87,16 @@ def compute_character_alphabet(text: str, *, code_word: str = "") -> list[str]:
     return letters + umlauts_present + remaining
 
 
-def vigenere_encrypt(text: str, *, code_word: str) -> str:
-    """Encrypt text using a Vigenere-style shift over the computed alphabet."""
+def _shift_over_alphabet(
+    text: str,
+    *,
+    alphabet: list[str],
+    index: dict[str, int],
+    key_indices: list[int],
+) -> str:
+    if not alphabet:
+        return text
 
-    code_word = (code_word or "A").upper()
-    alphabet = compute_character_alphabet(text, code_word=code_word)
-    index = {ch: i for i, ch in enumerate(alphabet)}
-
-    key_indices = [index.get(ch, 0) for ch in code_word]
     if not key_indices:
         key_indices = [0]
 
@@ -105,9 +107,25 @@ def vigenere_encrypt(text: str, *, code_word: str) -> str:
         if ci is None:
             out.append(ch)
             continue
-        shift = key_indices[i % len(key_indices)]
+        shift = int(key_indices[i % len(key_indices)])
         out.append(alphabet[(ci + shift) % n])
     return "".join(out)
+
+
+def vigenere_encrypt(text: str, *, code_word: str) -> str:
+    """Encrypt text using a Vigenere-style shift over the computed alphabet."""
+
+    code_word = (code_word or "A").upper()
+    alphabet = compute_character_alphabet(text, code_word=code_word)
+    index = {ch: i for i, ch in enumerate(alphabet)}
+
+    key_indices = [index.get(ch, 0) for ch in code_word]
+    return _shift_over_alphabet(
+        text,
+        alphabet=alphabet,
+        index=index,
+        key_indices=key_indices,
+    )
 
 
 def build_character_mapping_figure(
@@ -338,6 +356,23 @@ def build_character_table_figure(
 
     mask_rows, mask_cols = punch_mask.shape
 
+    # Caesar shifting alphabet for punch-card words.
+    # We build it from the table text, code word, and all punch-card words.
+    # Spaces are treated as padding and are not shifted.
+    _word_pool = "".join((c.word or "") for c in punch_cards)
+    _alpha_source = f"{text}{code_word}{_word_pool}".upper()
+    _alpha = compute_character_alphabet(_alpha_source)
+    caesar_alphabet = [ch for ch in _alpha if ch != " "]
+    caesar_index = {ch: i for i, ch in enumerate(caesar_alphabet)}
+
+    def _caesar_shift_char(ch: str, *, shift: int) -> str:
+        return _shift_over_alphabet(
+            ch,
+            alphabet=caesar_alphabet,
+            index=caesar_index,
+            key_indices=[int(shift)],
+        )
+
     def _card_mask(card: PunchCardConfig):
         if not bool(card.flipped):
             return punch_mask
@@ -365,6 +400,30 @@ def build_character_table_figure(
         for col in range(n_cols):
             linear = row * n_cols + col
             v = padded[linear]
+
+            # If a punch card reveals this cell, override the displayed character
+            # with the punch-card word Caesar-shifted by card.shift.
+            for card in punch_cards:
+                if not bool(card.is_active):
+                    continue
+                px, py = _card_pos(card)
+                punch_col = px - 1
+                punch_row = py - 1
+                m = _card_mask(card)
+                mr = row - punch_row
+                mc = col - punch_col
+                if (
+                    0 <= mr < mask_rows
+                    and 0 <= mc < mask_cols
+                    and int(m[mr, mc]) == 1
+                ):
+                    # Fill the card's full grid (row-major) starting at top-left,
+                    # padding with spaces if the word is shorter.
+                    local_linear = int(mr) * int(mask_cols) + int(mc)
+                    w = str(card.word or "").upper()
+                    wc = w[local_linear] if local_linear < len(w) else " "
+                    v = _caesar_shift_char(wc, shift=int(card.shift))
+                    break
 
             if v == "":
                 z_row.append(0)
