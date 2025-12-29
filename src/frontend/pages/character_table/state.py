@@ -52,8 +52,9 @@ def _hex_to_rgba(color: str, *, alpha: float) -> str:
 
 def preprocess_text(text: str) -> str:
     # Normalize all whitespace (including line breaks) to single spaces.
-    # Do not remove whitespace or punctuation.
     text = re.sub(r"\s+", " ", text).strip()
+    # Remove punctuation.
+    text = re.sub(r"[^\w\s]", "", text)
     return text.upper()
 
 
@@ -66,11 +67,22 @@ def compute_character_alphabet(text: str, *, code_word: str = "") -> list[str]:
     """
 
     letters = [chr(ord("A") + i) for i in range(26)]
+    letters_set = set(letters)
+
     unique = set(text)
     unique.update(code_word)
 
-    remaining = sorted(ch for ch in unique if ch not in set(letters))
-    return letters + remaining
+    umlauts = ["Ä", "Ö", "Ü"]
+    umlauts_present = [
+        u for u in umlauts if u in unique and u not in letters_set
+    ]
+
+    remaining = sorted(
+        ch
+        for ch in unique
+        if ch not in letters_set and ch not in set(umlauts_present)
+    )
+    return letters + umlauts_present + remaining
 
 
 def vigenere_encrypt(text: str, *, code_word: str) -> str:
@@ -94,6 +106,201 @@ def vigenere_encrypt(text: str, *, code_word: str) -> str:
         shift = key_indices[i % len(key_indices)]
         out.append(alphabet[(ci + shift) % n])
     return "".join(out)
+
+
+def build_character_mapping_figure(
+    *,
+    text: str,
+    code_word: str,
+    theme: str,
+) -> go.Figure:
+    """Build a table-style grid showing shifts for each code word position.
+
+    Rows: text character (alphabet)
+    Columns: shift character (alphabet)
+    Cells: shifted character (Caesar-style)
+
+    The first header row shows the shift character (A, B, C, ...).
+    The second header row shows the shift index (0, 1, 2, ...).
+    """
+
+    code_word = str(code_word or "").upper()
+    theme = str(theme or "light").lower()
+
+    cell_px = 28
+    gap_px = 1
+    margin = dict(l=10, r=10, t=10, b=10)
+
+    if not text:
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(values=["Character mapping"]),
+                    cells=dict(values=[[""]]),
+                )
+            ]
+        )
+        fig.update_layout(margin=margin, autosize=False, height=120, width=320)
+        return fig
+
+    alphabet = compute_character_alphabet(text, code_word=code_word)
+    idx = {ch: i for i, ch in enumerate(alphabet)}
+    n = len(alphabet)
+
+    # Columns represent all possible shifts (by index):
+    # column 0: A/0, column 1: B/1, ...
+    shifts = list(range(n))
+
+    # Build a table-like grid by inserting header rows/columns.
+    # grid rows = 2 (header rows) + len(alphabet)
+    # grid cols = 1 (row label col) + len(alphabet)
+    grid_rows = 2 + len(alphabet)
+    grid_cols = 1 + len(alphabet)
+
+    z: list[list[int]] = []
+    annotations: list[dict] = []
+    shapes: list[dict] = []
+
+    if theme == "dark":
+        cell_bg = "rgba(255,255,255,0.15)"
+        label_bg = "rgba(255,255,255,0.25)"
+        grid_bg = "rgba(0,0,0,1)"
+        text_color = "white"
+        separator_color = "rgba(255,255,255,0.4)"
+    else:
+        cell_bg = "rgba(0,0,0,0.15)"
+        label_bg = "rgba(0,0,0,0.25)"
+        grid_bg = "rgba(255,255,255,1)"
+        text_color = "black"
+        separator_color = "rgba(0,0,0,0.4)"
+    # Use z to differentiate label cells vs mapping cells.
+    colorscale = [(0.0, cell_bg), (1.0, label_bg)]
+
+    for r in range(grid_rows):
+        z_row: list[int] = []
+        for c in range(grid_cols):
+            is_label_cell = (r <= 1) or (c == 0)
+            z_row.append(1 if is_label_cell else 0)
+
+            # Determine displayed value for this cell.
+            if r == 0 and c == 0:
+                value = ""
+            elif r == 0 and c > 0:
+                # Shift character header row.
+                value = alphabet[c - 1]
+            elif r == 1 and c == 0:
+                value = ""
+            elif r == 1 and c > 0:
+                # Shift index header row.
+                value = str(c - 1)
+            elif r >= 2 and c == 0:
+                # Row label.
+                value = alphabet[r - 2]
+            else:
+                base = alphabet[r - 2]
+                shift = shifts[c - 1]
+                value = alphabet[(idx[base] + shift) % n]
+
+            if value != "":
+                annotations.append(
+                    dict(
+                        x=c,
+                        y=r,
+                        text=value,
+                        showarrow=False,
+                        font=dict(size=14, color=text_color),
+                    )
+                )
+        z.append(z_row)
+
+    # Thicker borders separating labels (top rows + left col) from data cells.
+    # Use filled rectangles (same style as punch-card highlighting) so they
+    # remain visible regardless of zoom/gaps.
+    bar_half = 0.04
+    # Vertical separator between label column (c=0) and data columns.
+    shapes.append(
+        dict(
+            type="rect",
+            xref="x",
+            yref="y",
+            x0=0.5 - bar_half,
+            x1=0.5 + bar_half,
+            y0=-0.5,
+            y1=grid_rows - 0.5,
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            fillcolor=separator_color,
+            layer="above",
+        )
+    )
+    # Horizontal separator between header rows (r=0,1) and data rows.
+    shapes.append(
+        dict(
+            type="rect",
+            xref="x",
+            yref="y",
+            x0=-0.5,
+            x1=grid_cols - 0.5,
+            y0=1.5 - bar_half,
+            y1=1.5 + bar_half,
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            fillcolor=separator_color,
+            layer="above",
+        )
+    )
+
+    fig_width = (
+        margin["l"]
+        + margin["r"]
+        + grid_cols * cell_px
+        + (grid_cols - 1) * gap_px
+    )
+    fig_height = (
+        margin["t"]
+        + margin["b"]
+        + grid_rows * cell_px
+        + (grid_rows - 1) * gap_px
+    )
+
+    fig = go.Figure(
+        data=[
+            go.Heatmap(
+                z=z,
+                zmin=0,
+                zmax=1,
+                colorscale=colorscale,
+                showscale=False,
+                hoverinfo="skip",
+                xgap=gap_px,
+                ygap=gap_px,
+            )
+        ]
+    )
+    fig.update_layout(
+        margin=margin,
+        autosize=False,
+        width=fig_width,
+        height=fig_height,
+        annotations=annotations,
+        shapes=shapes,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=grid_bg,
+    )
+    fig.update_xaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        range=[-0.5, grid_cols - 0.5],
+        constrain="domain",
+    )
+    fig.update_yaxes(
+        showticklabels=False,
+        showgrid=False,
+        zeroline=False,
+        range=[grid_rows - 0.5, -0.5],
+        scaleanchor="x",
+        scaleratio=1,
+    )
+    return fig
 
 
 def build_character_table_figure(
@@ -283,6 +490,8 @@ class CharacterTableState(rx.State):
     punch_cards: list[PunchCardConfig] = []
 
     figure: go.Figure = go.Figure()
+    mapping_figure_light: go.Figure = go.Figure()
+    mapping_figure_dark: go.Figure = go.Figure()
 
     def _rebuild(self) -> None:
         processed = preprocess_text(self.text)
@@ -296,6 +505,16 @@ class CharacterTableState(rx.State):
             width=self.table_width,
             code_word=self.code_word,
             punch_cards=self.punch_cards,
+        )
+        self.mapping_figure_light = build_character_mapping_figure(
+            text=processed,
+            code_word=self.code_word,
+            theme="light",
+        )
+        self.mapping_figure_dark = build_character_mapping_figure(
+            text=processed,
+            code_word=self.code_word,
+            theme="dark",
         )
 
     @staticmethod
