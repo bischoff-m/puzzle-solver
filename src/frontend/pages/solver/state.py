@@ -1,49 +1,258 @@
-from pathlib import Path
-
 import plotly.graph_objects as go
 import reflex as rx
 
-from puzzle_solver.api import solve_and_plot_cube, solve_and_plot_flat
+from puzzle_solver.api import (
+    list_puzzle_assets,
+    load_puzzle,
+    resolve_puzzle_asset,
+)
+from puzzle_solver.cube_solver import solve_cube_pool
+from puzzle_solver.flat_solver import solve_flat_pool
+from puzzle_solver.plotting import plot_cube_solution, plot_flat_solution
 
 
 class SolverState(rx.State):
-    config_path: str = "puzzle.yaml"
+    puzzles: list[str] = []
+    selected_puzzle: str = ""
+    max_solutions: int = 50
 
     flat_figure: go.Figure = go.Figure()
     cube_figure: go.Figure = go.Figure()
 
+    flat_solutions: list[dict[str, list[list[int]]]] = []
+    cube_solutions: list[dict[str, list[object]]] = []
+
+    flat_solution_index: int = 0
+    cube_solution_index: int = 0
+
+    flat_solution_count: int = 0
+    cube_solution_count: int = 0
+
     solving_flat: bool = False
     solving_cube: bool = False
-    error: str = ""
+    flat_error: str = ""
+    cube_error: str = ""
 
     @rx.event
-    def set_config_path(self, value: str):
-        self.config_path = value
+    def on_load(self):
+        self.puzzles = list_puzzle_assets()
+        if not self.selected_puzzle and self.puzzles:
+            self.selected_puzzle = self.puzzles[0]
+        if self.selected_puzzle:
+            yield SolverState.select_puzzle(self.selected_puzzle)
+
+    def _flat_sol_from_json(
+        self, sol: dict[str, list[list[int]]]
+    ) -> dict[str, set[tuple[int, int]]]:
+        out: dict[str, set[tuple[int, int]]] = {}
+        for name, cells in sol.items():
+            occ: set[tuple[int, int]] = set()
+            if isinstance(cells, list):
+                for item in cells:
+                    if (
+                        isinstance(item, list)
+                        and len(item) == 2
+                        and isinstance(item[0], int)
+                        and isinstance(item[1], int)
+                    ):
+                        occ.add((item[0], item[1]))
+            out[str(name)] = occ
+        return out
+
+    def _cube_sol_from_json(
+        self, sol: dict[str, list[object]]
+    ) -> dict[str, tuple[str, int]]:
+        out: dict[str, tuple[str, int]] = {}
+        for name, placement in sol.items():
+            face: str = "+Z"
+            rot: int = 0
+            if (
+                isinstance(placement, list)
+                and len(placement) == 2
+                and isinstance(placement[0], str)
+            ):
+                face = placement[0]
+                try:
+                    rot = int(placement[1])
+                except (TypeError, ValueError):
+                    rot = 0
+            out[str(name)] = (face, rot)
+        return out
+
+    def _replot_flat(self) -> None:
+        if self.flat_solution_count <= 0:
+            self.flat_figure = go.Figure()
+            return
+        i = max(
+            0, min(int(self.flat_solution_index), self.flat_solution_count - 1)
+        )
+        self.flat_solution_index = i
+        path = resolve_puzzle_asset(self.selected_puzzle)
+        board, pieces = load_puzzle(path)
+        sol = self._flat_sol_from_json(self.flat_solutions[i])
+        self.flat_figure = plot_flat_solution(board, sol)
+
+    def _replot_cube(self) -> None:
+        if self.cube_solution_count <= 0:
+            self.cube_figure = go.Figure()
+            return
+        i = max(
+            0, min(int(self.cube_solution_index), self.cube_solution_count - 1)
+        )
+        self.cube_solution_index = i
+        path = resolve_puzzle_asset(self.selected_puzzle)
+        _board, pieces = load_puzzle(path)
+        sol = self._cube_sol_from_json(self.cube_solutions[i])
+        self.cube_figure = plot_cube_solution(pieces, sol)
 
     @rx.event
-    def solve_flat(self):
-        self.error = ""
+    def select_puzzle(self, puzzle: str):
+        self.selected_puzzle = str(puzzle)
+        self.flat_error = ""
+        self.cube_error = ""
         self.solving_flat = True
-        yield
-
-        try:
-            fig, _ = solve_and_plot_flat(path=Path(self.config_path))
-            self.flat_figure = fig
-        except Exception as e:
-            self.error = str(e)
-        finally:
-            self.solving_flat = False
-
-    @rx.event
-    def solve_cube(self):
-        self.error = ""
         self.solving_cube = True
         yield
 
         try:
-            fig, _ = solve_and_plot_cube(path=Path(self.config_path))
-            self.cube_figure = fig
+            path = resolve_puzzle_asset(self.selected_puzzle)
         except Exception as e:
-            self.error = str(e)
-        finally:
+            msg = str(e)
+            self.flat_error = msg
+            self.cube_error = msg
+            self.flat_solutions = []
+            self.cube_solutions = []
+            self.flat_solution_count = 0
+            self.cube_solution_count = 0
+            self.flat_solution_index = 0
+            self.cube_solution_index = 0
+            self.flat_figure = go.Figure()
+            self.cube_figure = go.Figure()
+            self.solving_flat = False
             self.solving_cube = False
+            return
+
+        # Load once for solving/plotting.
+        try:
+            board, pieces = load_puzzle(path)
+        except Exception as e:
+            msg = str(e)
+            self.flat_error = msg
+            self.cube_error = msg
+            self.flat_solutions = []
+            self.cube_solutions = []
+            self.flat_solution_count = 0
+            self.cube_solution_count = 0
+            self.flat_solution_index = 0
+            self.cube_solution_index = 0
+            self.flat_figure = go.Figure()
+            self.cube_figure = go.Figure()
+            self.solving_flat = False
+            self.solving_cube = False
+            return
+
+        # Solve flat.
+        try:
+            flat_sols = solve_flat_pool(
+                board,
+                pieces,
+                max_solutions=int(self.max_solutions),
+                output_flag=0,
+            )
+            self.flat_solutions = [
+                {
+                    name: [[int(x), int(y)] for (x, y) in sorted(list(occ))]
+                    for name, occ in sol.items()
+                }
+                for sol in flat_sols
+            ]
+            self.flat_solution_count = len(self.flat_solutions)
+            self.flat_solution_index = 0
+            if self.flat_solution_count > 0:
+                self.flat_figure = plot_flat_solution(
+                    board, self._flat_sol_from_json(self.flat_solutions[0])
+                )
+            else:
+                self.flat_error = "No flat solutions found"
+                self.flat_figure = go.Figure()
+        except Exception as e:
+            self.flat_error = str(e)
+            self.flat_solutions = []
+            self.flat_solution_count = 0
+            self.flat_solution_index = 0
+            self.flat_figure = go.Figure()
+
+        # Solve cube.
+        try:
+            cube_sols = solve_cube_pool(
+                pieces,
+                max_solutions=int(self.max_solutions),
+                output_flag=0,
+            )
+            self.cube_solutions = [
+                {
+                    name: [str(face), int(rot)]
+                    for name, (face, rot) in sol.items()
+                }
+                for sol in cube_sols
+            ]
+            self.cube_solution_count = len(self.cube_solutions)
+            self.cube_solution_index = 0
+            if self.cube_solution_count > 0:
+                self.cube_figure = plot_cube_solution(
+                    pieces, self._cube_sol_from_json(self.cube_solutions[0])
+                )
+            else:
+                self.cube_error = "No cube solutions found"
+                self.cube_figure = go.Figure()
+        except Exception as e:
+            self.cube_error = str(e)
+            self.cube_solutions = []
+            self.cube_solution_count = 0
+            self.cube_solution_index = 0
+            self.cube_figure = go.Figure()
+        finally:
+            self.solving_flat = False
+            self.solving_cube = False
+
+    @rx.event
+    def solve_flat(self):
+        yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def solve_cube(self):
+        yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def prev_flat_solution(self):
+        if self.flat_solution_count <= 1:
+            return
+        self.flat_solution_index = max(0, int(self.flat_solution_index) - 1)
+        self._replot_flat()
+
+    @rx.event
+    def next_flat_solution(self):
+        if self.flat_solution_count <= 1:
+            return
+        self.flat_solution_index = min(
+            int(self.flat_solution_count) - 1,
+            int(self.flat_solution_index) + 1,
+        )
+        self._replot_flat()
+
+    @rx.event
+    def prev_cube_solution(self):
+        if self.cube_solution_count <= 1:
+            return
+        self.cube_solution_index = max(0, int(self.cube_solution_index) - 1)
+        self._replot_cube()
+
+    @rx.event
+    def next_cube_solution(self):
+        if self.cube_solution_count <= 1:
+            return
+        self.cube_solution_index = min(
+            int(self.cube_solution_count) - 1,
+            int(self.cube_solution_index) + 1,
+        )
+        self._replot_cube()

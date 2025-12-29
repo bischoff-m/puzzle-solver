@@ -11,6 +11,45 @@ from .types import Board, Piece
 from .yaml_io import load_puzzle_yaml
 
 
+def _repo_root() -> Path:
+    # src/puzzle_solver/api.py -> src -> repo root
+    return Path(__file__).resolve().parents[2]
+
+
+def puzzles_assets_dir() -> Path:
+    return _repo_root() / "assets" / "puzzles"
+
+
+def list_puzzle_assets() -> list[str]:
+    """List available puzzle YAML filenames under assets/puzzles."""
+
+    d = puzzles_assets_dir()
+    if not d.exists():
+        return []
+    return sorted(p.name for p in d.glob("*.yaml") if p.is_file())
+
+
+def resolve_puzzle_asset(name: str) -> Path:
+    """Resolve a puzzle YAML within assets/puzzles by filename.
+
+    Only allows selecting files directly under assets/puzzles (no path
+    separators) to avoid arbitrary file access.
+    """
+
+    n = str(name or "").strip()
+    if not n:
+        raise ValueError("Puzzle name is empty")
+    if "/" in n or "\\" in n or n.startswith("."):
+        raise ValueError(f"Invalid puzzle name: {n!r}")
+    if not n.lower().endswith(".yaml"):
+        n = f"{n}.yaml"
+
+    p = puzzles_assets_dir() / n
+    if not p.exists():
+        raise FileNotFoundError(f"Puzzle not found: {n}")
+    return p
+
+
 def load_character_table_defaults(
     path: str | Path = "character_table_defaults.yaml",
 ) -> dict[str, object]:
