@@ -1,4 +1,8 @@
+from typing import TypeVar
+
 from .types import Cell, Grid
+
+T = TypeVar("T")
 
 
 def _border_coords_clockwise(width: int, height: int) -> list[Cell]:
@@ -106,13 +110,13 @@ def board_border30_from_grid(grid: Grid) -> tuple[bool, ...]:
     return tuple(border)
 
 
-def rotate_grid_90_cw(grid: Grid) -> Grid:
+def rotate_grid_90_cw(grid: list[list[T]]) -> list[list[T]]:
     h = len(grid)
     w = len(grid[0])
     return [[grid[h - 1 - y][x] for y in range(h)] for x in range(w)]
 
 
-def rotate_grid(grid: Grid, k_cw: int) -> Grid:
+def rotate_grid(grid: list[list[T]], k_cw: int) -> list[list[T]]:
     k = k_cw % 4
     out = grid
     for _ in range(k):
@@ -120,12 +124,12 @@ def rotate_grid(grid: Grid, k_cw: int) -> Grid:
     return out
 
 
-def flip_grid_x(grid: Grid) -> Grid:
+def flip_grid_x(grid: list[list[T]]) -> list[list[T]]:
     """Flip across x-axis (vertical flip in screen coordinates)."""
     return list(reversed([list(row) for row in grid]))
 
 
-def flip_grid_y(grid: Grid) -> Grid:
+def flip_grid_y(grid: list[list[T]]) -> list[list[T]]:
     """Flip across y-axis (horizontal flip in screen coordinates)."""
     return [list(reversed(row)) for row in grid]
 

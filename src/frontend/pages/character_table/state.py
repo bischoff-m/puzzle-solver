@@ -11,7 +11,7 @@ from puzzle_solver.api import (
     load_character_table_defaults,
     save_character_table_defaults,
 )
-from puzzle_solver.plotting import _qualitative_palette
+from puzzle_solver.plotting import qualitative_palette
 
 from .punch_card import mask as punch_mask
 
@@ -338,7 +338,7 @@ def build_character_table_figure(
 ) -> go.Figure:
     width = max(1, min(200, int(width)))
     n_colors = max(1, len(str(code_word or "")))
-    palette = _qualitative_palette(n_colors)
+    palette = qualitative_palette(n_colors)
 
     cell_px = 28
     gap_px = 1

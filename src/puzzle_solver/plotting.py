@@ -46,7 +46,7 @@ def _get_dot_offsets(n: int) -> list[tuple[float, float]]:
     return []
 
 
-def _qualitative_palette(n: int) -> list[str]:
+def qualitative_palette(n: int) -> list[str]:
     # Avoid reaching into Plotly's template typing (varies across versions and
     # is not always modeled in type stubs). Keep a stable default palette.
     base = [
@@ -110,7 +110,7 @@ def plot_flat_solution(
                     dot_xs.append(x + dx)
                     dot_ys.append(y + dy)
 
-    piece_colors = _qualitative_palette(max(6, len(piece_items)))[
+    piece_colors = qualitative_palette(max(6, len(piece_items)))[
         : len(piece_items)
     ]
     colors = ["#ffffff", *piece_colors, "#c0c0c0"]
@@ -249,7 +249,7 @@ def plot_pieces_row(
                             dot_ys.append(y + dy)
 
     t = _character_mapping_theme(theme)
-    palette = _qualitative_palette(max(6, n))[:n]
+    palette = qualitative_palette(max(6, n))[:n]
     colors = [t["cell_bg"], *palette]
     colorscale = _discrete_colorscale(colors)
 
@@ -414,7 +414,7 @@ def plot_cube_solution(
     voxels_by_piece = _voxels_from_solution(pieces, solution)
 
     names_sorted = sorted(voxels_by_piece.keys())
-    palette = _qualitative_palette(max(6, len(names_sorted)))[
+    palette = qualitative_palette(max(6, len(names_sorted)))[
         : len(names_sorted)
     ]
     name_to_color = {name: palette[i] for i, name in enumerate(names_sorted)}

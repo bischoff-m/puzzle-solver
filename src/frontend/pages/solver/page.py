@@ -47,6 +47,26 @@ def page() -> rx.Component:
                 width="100%",
                 align="center",
             ),
+            rx.hstack(
+                rx.text("Legend:", weight="bold"),
+                rx.foreach(
+                    SolverState.piece_legend,
+                    lambda item: rx.hstack(
+                        rx.box(
+                            width="1em",
+                            height="1em",
+                            background_color=item["color"],
+                            border_radius="2px",
+                        ),
+                        rx.text(item["name"]),
+                        align="center",
+                        spacing="1",
+                    ),
+                ),
+                spacing="4",
+                wrap="wrap",
+                width="100%",
+            ),
             rx.divider(),
             rx.heading("Flat", size="5"),
             rx.hstack(

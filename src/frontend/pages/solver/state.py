@@ -18,6 +18,7 @@ from puzzle_solver.plotting import (
     plot_flat_board,
     plot_flat_solution,
     plot_pieces_row,
+    qualitative_palette,
 )
 from puzzle_solver.types import Face
 
@@ -46,10 +47,22 @@ class SolverState(rx.State):
     flat_solution_count: int = 0
     cube_solution_count: int = 0
 
+    piece_names: list[str] = []
+
     solving_flat: bool = False
     solving_cube: bool = False
     flat_error: str = ""
     cube_error: str = ""
+
+    @rx.var(cache=True)
+    def piece_legend(self) -> list[dict[str, str]]:
+        names = self.piece_names
+        if not names:
+            return []
+        colors = qualitative_palette(max(6, len(names)))[: len(names)]
+        return [
+            {"name": name, "color": color} for name, color in zip(names, colors)
+        ]
 
     @rx.event
     def on_load(self):
@@ -189,6 +202,7 @@ class SolverState(rx.State):
         try:
             board, pieces, is_flipped = load_puzzle_with_meta(path)
             self.puzzle_is_flipped = bool(is_flipped)
+            self.piece_names = sorted([p.name for p in pieces])
         except Exception as e:
             msg = str(e)
             self.flat_error = msg
