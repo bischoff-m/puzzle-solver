@@ -300,16 +300,16 @@ def plot_pieces_row(
 
 def _voxels_from_solution(
     pieces: list[Piece], solution: dict[str, tuple[Face, int]]
-) -> dict[str, tuple[Face, dict[Voxel, int]]]:
+) -> dict[str, tuple[Face, dict[Voxel, dict[Face, int]]]]:
     piece_by_name: dict[str, Piece] = {p.name: p for p in pieces}
 
-    out: dict[str, tuple[Face, dict[Voxel, int]]] = {}
+    out: dict[str, tuple[Face, dict[Voxel, dict[Face, int]]]] = {}
     for name, (face, rot) in solution.items():
         piece = piece_by_name.get(name)
         if piece is None:
             raise KeyError(f"Piece {name!r} not found in pieces")
 
-        occ: dict[Voxel, int] | None = None
+        occ: dict[Voxel, dict[Face, int]] | None = None
         for f, r, voxels in _enumerate_cube_placements(piece):
             if f == face and r == rot:
                 occ = voxels
@@ -435,7 +435,7 @@ def plot_cube_solution(
         kk: list[int] = []
 
         face, occ = voxels_by_piece[name]
-        for (x, y, z), dots in sorted(occ.items()):
+        for (x, y, z), d_dict in sorted(occ.items()):
             _add_voxel_cube_to_mesh(
                 x0=float(x) + inset,
                 y0=float(y) + inset,
@@ -448,8 +448,9 @@ def plot_cube_solution(
                 jj=jj,
                 kk=kk,
             )
-            if dots > 0:
-                _add_dots_3d(dot_xs, dot_ys, dot_zs, dots, face, x, y, z)
+            for d_face, dots in d_dict.items():
+                if dots > 0:
+                    _add_dots_3d(dot_xs, dot_ys, dot_zs, dots, d_face, x, y, z)
 
         data.append(
             go.Mesh3d(

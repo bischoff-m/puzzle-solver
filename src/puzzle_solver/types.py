@@ -12,12 +12,17 @@ class PieceInput:
     name: str
     border12: tuple[bool, ...]
     dots: tuple[int, ...] | None = None
+    dots_side16: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         if len(self.border12) != 12:
             raise ValueError(f"Piece {self.name}: border12 must have length 12")
         if self.dots is not None and len(self.dots) != 12:
             raise ValueError(f"Piece {self.name}: dots must have length 12")
+        if self.dots_side16 is not None and len(self.dots_side16) != 16:
+            raise ValueError(
+                f"Piece {self.name}: dots_side16 must have length 16"
+            )
 
 
 @dataclass(frozen=True)
@@ -34,6 +39,8 @@ class Piece:
     name: str
     grid: Grid
     dots_grid: list[list[int]] | None = None
+    # Each voxel can have dots on its 4 side faces: (North, East, South, West)
+    dots_side_grid: list[list[tuple[int, int, int, int]]] | None = None
 
     def __post_init__(self) -> None:
         if len(self.grid) != 4 or any(len(row) != 4 for row in self.grid):
@@ -43,6 +50,13 @@ class Piece:
                 len(row) != 4 for row in self.dots_grid
             ):
                 raise ValueError(f"Piece {self.name}: dots_grid must be 4x4")
+        if self.dots_side_grid is not None:
+            if len(self.dots_side_grid) != 4 or any(
+                len(row) != 4 for row in self.dots_side_grid
+            ):
+                raise ValueError(
+                    f"Piece {self.name}: dots_side_grid must be 4x4"
+                )
 
 
 @dataclass(frozen=True)

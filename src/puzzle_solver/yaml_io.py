@@ -4,7 +4,12 @@ import yaml
 
 from .grids import (
     flip_grid_x,
+    flip_side_grid_x,
     piece_border12_from_grid,
+    piece_dots12_from_dots_grid,
+    piece_dots16_from_side_grid,
+    piece_dots_grid_from_dots12,
+    piece_dots_side_grid_from_dots16,
     piece_grid_from_border12,
 )
 from .types import BoardInput, PieceInput
@@ -58,6 +63,25 @@ def _coerce_int_list(
                 f"{label}[{i}] must be convertible to int, got {type(v).__name__}"
             )
     return tuple(out)
+
+
+def _validate_dots_range(values: tuple[int, ...], *, label: str) -> None:
+    for i, v in enumerate(values):
+        if not (0 <= int(v) <= 6):
+            raise ValueError(f"{label}[{i}] must be in 0..6, got {v}")
+
+
+def flip_dots16_reverse_shift(dots16: tuple[int, ...]) -> tuple[int, ...]:
+    """Flip the 16-dot edge encoding by reversing and shifting -1.
+
+    This is consistent with flip_border12_reverse_shift.
+    """
+    if len(dots16) != 16:
+        raise ValueError("dots16 must have length 16")
+    rev = list(reversed(dots16))
+    # shift -1 (right by one)
+    rev = [rev[-1]] + rev[:-1]
+    return tuple(rev)
 
 
 def flip_border12_reverse_shift(
@@ -133,12 +157,26 @@ def load_puzzle_yaml(
                 expected_len=12,
                 label=f"pieces[{idx}].border12",
             )
-            dots = _coerce_int_list(
-                item.get("dots"),
+            dots_top = _coerce_int_list(
+                item.get("dotsTop", item.get("dots")),
                 expected_len=12,
-                label=f"pieces[{idx}].dots",
+                label=f"pieces[{idx}].dotsTop",
             )
-            pieces.append(PieceInput(name=name, border12=border12, dots=dots))
+            _validate_dots_range(dots_top, label=f"pieces[{idx}].dotsTop")
+            dots_side16 = _coerce_int_list(
+                item.get("dotsSide"),
+                expected_len=16,
+                label=f"pieces[{idx}].dotsSide",
+            )
+            _validate_dots_range(dots_side16, label=f"pieces[{idx}].dotsSide")
+            pieces.append(
+                PieceInput(
+                    name=name,
+                    border12=border12,
+                    dots=dots_top,
+                    dots_side16=dots_side16,
+                )
+            )
     else:
         raise ValueError("pieces must be a list or mapping")
 
@@ -166,7 +204,8 @@ def dump_puzzle_yaml(
             {
                 "name": p.name,
                 "border12": list(p.border12),
-                "dots": list(p.dots) if p.dots else [0] * 12,
+                "dotsTop": list(p.dots) if p.dots else [0] * 12,
+                "dotsSide": list(p.dots_side16) if p.dots_side16 else [0] * 16,
             }
             for p in sorted(pieces, key=lambda x: x.name)
         ],
@@ -205,8 +244,25 @@ def flip_puzzle_yaml_pieces_x_inplace(path: str | Path) -> None:
         grid = piece_grid_from_border12(p.border12)
         flipped_grid = flip_grid_x(grid)
         flipped_border12 = piece_border12_from_grid(flipped_grid)
+
+        dots12 = p.dots if p.dots is not None else tuple([0] * 12)
+        dots_grid = piece_dots_grid_from_dots12(dots12)
+        flipped_dots12 = piece_dots12_from_dots_grid(flip_grid_x(dots_grid))
+
+        dots_side16 = (
+            p.dots_side16 if p.dots_side16 is not None else tuple([0] * 16)
+        )
+        dots_side_grid = piece_dots_side_grid_from_dots16(dots_side16)
+        flipped_dots_side16 = piece_dots16_from_side_grid(
+            flip_side_grid_x(dots_side_grid)
+        )
         flipped_inputs.append(
-            PieceInput(name=p.name, border12=flipped_border12)
+            PieceInput(
+                name=p.name,
+                border12=flipped_border12,
+                dots=flipped_dots12,
+                dots_side16=flipped_dots_side16,
+            )
         )
 
     path.write_text(

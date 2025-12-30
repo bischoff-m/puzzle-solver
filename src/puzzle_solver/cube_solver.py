@@ -1,7 +1,7 @@
 import gurobipy as gp
 from gurobipy import GRB
 
-from .grids import flip_grid_y, rotate_grid
+from .grids import flip_grid_y, flip_side_grid_y, rotate_grid, rotate_side_grid
 from .types import Face, Piece, Voxel
 
 
@@ -21,29 +21,66 @@ def _face_map(face: Face, u: int, v: int) -> Voxel:
     raise ValueError(f"Unknown face: {face}")
 
 
+def _get_side_face_map(face: Face) -> tuple[Face, Face, Face, Face]:
+    """Return (North, East, South, West) cube faces for a piece on 'face'."""
+    if face == "+Z":
+        return ("-Y", "+X", "+Y", "-X")
+    if face == "-Z":
+        return ("+Y", "+X", "-Y", "-X")
+    if face == "+Y":
+        return ("+Z", "+X", "-Z", "-X")
+    if face == "-Y":
+        return ("-Z", "+X", "+Z", "-X")
+    if face == "+X":
+        return ("-Z", "+Y", "+Z", "-Y")
+    if face == "-X":
+        return ("+Z", "+Y", "-Z", "-Y")
+    raise ValueError(f"Unknown face: {face}")
+
+
 def _enumerate_cube_placements(
     piece: Piece,
-) -> list[tuple[Face, int, dict[Voxel, int]]]:
+) -> list[tuple[Face, int, dict[Voxel, dict[Face, int]]]]:
     """All (face, rotation) placements of a 4x4 piece on the 4x4x4 cube boundary."""
-    placements: list[tuple[Face, int, dict[Voxel, int]]] = []
+    placements: list[tuple[Face, int, dict[Voxel, dict[Face, int]]]] = []
     faces: list[Face] = ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]
 
     base_grid = flip_grid_y(piece.grid)
-    base_dots = (
+    # Top dots (12 border values)
+    base_dots_top = (
         flip_grid_y(piece.dots_grid)
         if piece.dots_grid
         else [[0] * 4 for _ in range(4)]
     )
+    # Side dots (16 edge values)
+    base_dots_side = (
+        flip_side_grid_y(piece.dots_side_grid)
+        if piece.dots_side_grid
+        else [[(0, 0, 0, 0)] * 4 for _ in range(4)]
+    )
 
     for face in faces:
+        side_faces = _get_side_face_map(face)
         for rot in range(4):
             g = rotate_grid(base_grid, rot)
-            d = rotate_grid(base_dots, rot)
-            occ: dict[Voxel, int] = {}
+            dt = rotate_grid(base_dots_top, rot)
+            ds = rotate_side_grid(base_dots_side, rot)
+
+            occ: dict[Voxel, dict[Face, int]] = {}
             for v in range(4):
                 for u in range(4):
                     if g[v][u]:
-                        occ[_face_map(face, u, v)] = d[v][u]
+                        voxel = _face_map(face, u, v)
+                        d_dict: dict[Face, int] = {}
+                        # Main face (top)
+                        if dt[v][u] > 0:
+                            d_dict[face] = dt[v][u]
+                        # Side faces
+                        for i, s_face in enumerate(side_faces):
+                            if ds[v][u][i] > 0:
+                                d_dict[s_face] = ds[v][u][i]
+
+                        occ[voxel] = d_dict
             placements.append((face, rot, occ))
     return placements
 
@@ -62,9 +99,9 @@ def solve_cube_pool(
                 if x in (0, 3) or y in (0, 3) or z in (0, 3):
                     boundary.add((x, y, z))
 
-    placements_by_piece: dict[str, list[tuple[Face, int, dict[Voxel, int]]]] = {
-        p.name: _enumerate_cube_placements(p) for p in pieces
-    }
+    placements_by_piece: dict[
+        str, list[tuple[Face, int, dict[Voxel, dict[Face, int]]]]
+    ] = {p.name: _enumerate_cube_placements(p) for p in pieces}
 
     # Symmetry breaking: fix the first piece to the top face with a fixed
     # in-plane rotation to avoid counting globally rotated solutions.
