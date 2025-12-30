@@ -112,6 +112,22 @@ def load_character_table_defaults(
             n = fallback
         return max(1, n)
 
+    def _int(v: object, fallback: int) -> int:
+        try:
+            if isinstance(v, bool) or v is None:
+                n = fallback
+            elif isinstance(v, int):
+                n = v
+            elif isinstance(v, float):
+                n = int(v)
+            elif isinstance(v, str):
+                n = int(float(v))
+            else:
+                n = fallback
+        except (TypeError, ValueError):
+            n = fallback
+        return n
+
     if "table_width" in raw:
         out["table_width"] = _int_ge_1(raw.get("table_width"), 20)
 
@@ -137,7 +153,7 @@ def load_character_table_defaults(
                     "y": _int_ge_1(item.get("y"), 1),
                     "flipped": bool(item.get("flipped", False)),
                     "isActive": bool(item.get("isActive", True)),
-                    "shift": _int_ge_1(item.get("shift"), 1),
+                    "shift": _int(item.get("shift"), 1),
                     "word": item.get("word")
                     if isinstance(item.get("word"), str)
                     else "",

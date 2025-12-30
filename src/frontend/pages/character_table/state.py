@@ -562,6 +562,14 @@ class CharacterTableState(rx.State):
     mapping_figure_light: go.Figure = go.Figure()
     mapping_figure_dark: go.Figure = go.Figure()
 
+    @rx.var
+    def alphabet_size(self) -> int:
+        processed = preprocess_text(self.text)
+        _word_pool = "".join((c.word or "") for c in self.punch_cards)
+        _alpha_source = f"{processed}{self.code_word}{_word_pool} ".upper()
+        alpha = compute_character_alphabet(_alpha_source)
+        return len(alpha)
+
     def _rebuild(self) -> None:
         processed = preprocess_text(self.text)
         display = (
@@ -619,6 +627,17 @@ class CharacterTableState(rx.State):
         )
 
     @staticmethod
+    def _coerce_int(value: Any, *, default: int) -> int:
+        if value is None or isinstance(value, bool):
+            return int(default)
+        if isinstance(value, int):
+            return value
+        try:
+            return int(float(value))
+        except (TypeError, ValueError):
+            return int(default)
+
+    @staticmethod
     def _coerce_int_ge_1(value: Any, *, default: int) -> int:
         if value is None or isinstance(value, bool):
             return max(1, int(default))
@@ -649,7 +668,7 @@ class CharacterTableState(rx.State):
                     item.get("is_active", True),
                 )
             )
-            shift = CharacterTableState._coerce_int_ge_1(
+            shift = CharacterTableState._coerce_int(
                 item.get("shift"), default=1
             )
             word = item.get("word")
@@ -1004,18 +1023,20 @@ class CharacterTableState(rx.State):
 
     @rx.event
     def set_punch_card_shift(self, index: int, value: str):
-        self._update_card(
-            index, updates={"shift": self._coerce_int_ge_1(value, default=1)}
-        )
+        n = int(self.alphabet_size)
+        shift = self._coerce_int(value, default=1)
+        shift = max(-n, min(n, shift))
+        self._update_card(index, updates={"shift": shift})
 
     @rx.event
     def set_punch_card_shift_slider(self, index: int, value: list[float]):
+        n = int(self.alphabet_size)
         raw = value[0] if value else 1
         try:
             shift = int(float(raw))
         except (TypeError, ValueError):
             shift = 1
-        shift = max(1, min(200, shift))
+        shift = max(-n, min(n, shift))
         self._update_card(index, updates={"shift": shift})
 
     @rx.event
@@ -1024,7 +1045,8 @@ class CharacterTableState(rx.State):
         i = int(index)
         if not (0 <= i < len(cards)):
             return
-        shift = max(1, int(cards[i].shift) - 1)
+        n = int(self.alphabet_size)
+        shift = max(-n, int(cards[i].shift) - 1)
         self._update_card(index, updates={"shift": shift})
 
     @rx.event
@@ -1033,7 +1055,8 @@ class CharacterTableState(rx.State):
         i = int(index)
         if not (0 <= i < len(cards)):
             return
-        shift = min(200, int(cards[i].shift) + 1)
+        n = int(self.alphabet_size)
+        shift = min(n, int(cards[i].shift) + 1)
         self._update_card(index, updates={"shift": shift})
 
     @rx.event

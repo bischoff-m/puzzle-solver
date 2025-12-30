@@ -64,8 +64,8 @@ def _punch_card_row(card, index) -> rx.Component:
                 int_control(
                     label="Shift",
                     value=card.shift,
-                    min_=1,
-                    max_=200,
+                    min_=-CharacterTableState.alphabet_size,
+                    max_=CharacterTableState.alphabet_size,
                     label_width=_LABEL_W,
                     on_dec=CharacterTableState.dec_punch_card_shift(index),
                     on_inc=CharacterTableState.inc_punch_card_shift(index),

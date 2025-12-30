@@ -49,35 +49,35 @@ punch_cards:
   y: 6
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
+  shift: 0
+  word: PELIKAN
 - x: 5
   y: 11
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
-- x: 11
-  y: 15
+  shift: 0
+  word: ARMADILLO
+- x: 15
+  y: 4
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
-- x: 6
+  shift: 0
+  word: ERDFERKEL
+- x: 8
   y: 26
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
-- x: 20
+  shift: 0
+  word: SPITZMAUS
+- x: 21
   y: 22
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
+  shift: 0
+  word: CHIHUAHUA
 - x: 14
-  y: 5
+  y: 15
   flipped: false
   isActive: true
-  shift: 1
-  word: ''
+  shift: 0
+  word: WALROSS
