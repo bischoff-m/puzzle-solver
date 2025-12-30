@@ -113,7 +113,9 @@ def _shift_over_alphabet(
     return "".join(out)
 
 
-def vigenere_encrypt(text: str, *, code_word: str) -> str:
+def vigenere_encrypt(
+    text: str, *, code_word: str, backward: bool = False
+) -> str:
     """Encrypt text using a Vigenere-style shift over the computed alphabet."""
 
     code_word = (code_word or "A").upper()
@@ -121,6 +123,9 @@ def vigenere_encrypt(text: str, *, code_word: str) -> str:
     index = {ch: i for i, ch in enumerate(alphabet)}
 
     key_indices = [index.get(ch, 0) for ch in code_word]
+    if backward:
+        key_indices = [-idx for idx in key_indices]
+
     return _shift_over_alphabet(
         text,
         alphabet=alphabet,
@@ -555,6 +560,7 @@ class CharacterTableState(rx.State):
 
     code_word: str = ""
     show_encrypted: bool = False
+    vigenere_backward: bool = False
 
     punch_cards: list[PunchCardConfig] = []
 
@@ -573,7 +579,11 @@ class CharacterTableState(rx.State):
     def _rebuild(self) -> None:
         processed = preprocess_text(self.text)
         display = (
-            vigenere_encrypt(processed, code_word=self.code_word)
+            vigenere_encrypt(
+                processed,
+                code_word=self.code_word,
+                backward=bool(self.vigenere_backward),
+            )
             if bool(self.show_encrypted)
             else processed
         )
@@ -622,6 +632,7 @@ class CharacterTableState(rx.State):
                 "table_width": int(self.table_width),
                 "code_word": str(self.code_word),
                 "show_encrypted": bool(self.show_encrypted),
+                "vigenere_backward": bool(self.vigenere_backward),
                 "punch_cards": self._cards_to_jsonable(self.punch_cards),
             }
         )
@@ -709,6 +720,9 @@ class CharacterTableState(rx.State):
         se = defaults.get("show_encrypted")
         self.show_encrypted = bool(se) if se is not None else False
 
+        vb = defaults.get("vigenere_backward")
+        self.vigenere_backward = bool(vb) if vb is not None else False
+
         try:
             self.punch_cards = self._coerce_cards(
                 defaults.get(
@@ -749,6 +763,7 @@ class CharacterTableState(rx.State):
             "table_width": int(self.table_width),
             "code_word": str(self.code_word),
             "show_encrypted": bool(self.show_encrypted),
+            "vigenere_backward": bool(self.vigenere_backward),
             "punch_cards": self._cards_to_jsonable(self.punch_cards),
         }
         save_character_table_defaults(doc)
@@ -790,6 +805,11 @@ class CharacterTableState(rx.State):
                     se = cfg.get("show_encrypted")
                     self.show_encrypted = bool(se) if se is not None else False
 
+                    vb = cfg.get("vigenere_backward")
+                    self.vigenere_backward = (
+                        bool(vb) if vb is not None else False
+                    )
+
                     self.punch_cards = self._coerce_cards(
                         cfg.get("punch_cards", defaults.get("punch_cards", []))
                     )
@@ -821,6 +841,9 @@ class CharacterTableState(rx.State):
 
         se = defaults.get("show_encrypted")
         self.show_encrypted = bool(se) if se is not None else False
+
+        vb = defaults.get("vigenere_backward")
+        self.vigenere_backward = bool(vb) if vb is not None else False
 
         # Punch cards: prefer new JSON storage; if empty, try migrating legacy row/col;
         # otherwise fall back to backend YAML defaults.
@@ -870,6 +893,12 @@ class CharacterTableState(rx.State):
     @rx.event
     def set_show_encrypted(self, value: bool):
         self.show_encrypted = bool(value)
+        self._sync_config_storage()
+        self._rebuild()
+
+    @rx.event
+    def set_vigenere_backward(self, value: bool):
+        self.vigenere_backward = bool(value)
         self._sync_config_storage()
         self._rebuild()
 

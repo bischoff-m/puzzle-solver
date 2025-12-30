@@ -152,6 +152,11 @@ def config_section() -> rx.Component:
                 checked=CharacterTableState.show_encrypted,
                 on_change=CharacterTableState.set_show_encrypted,
             ),
+            rx.checkbox(
+                "Backward",
+                checked=CharacterTableState.vigenere_backward,
+                on_change=CharacterTableState.set_vigenere_backward,
+            ),
             spacing="3",
             width="100%",
             align="center",
