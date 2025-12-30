@@ -359,11 +359,10 @@ def build_character_table_figure(
 
     # Caesar shifting alphabet for punch-card words.
     # We build it from the table text, code word, and all punch-card words.
-    # Spaces are treated as padding and are not shifted.
+    # We explicitly include a space so that padded holes are also shifted.
     _word_pool = "".join((c.word or "") for c in punch_cards)
-    _alpha_source = f"{text}{code_word}{_word_pool}".upper()
-    _alpha = compute_character_alphabet(_alpha_source)
-    caesar_alphabet = [ch for ch in _alpha if ch != " "]
+    _alpha_source = f"{text}{code_word}{_word_pool} ".upper()
+    caesar_alphabet = compute_character_alphabet(_alpha_source)
     caesar_index = {ch: i for i, ch in enumerate(caesar_alphabet)}
 
     def _caesar_shift_char(ch: str, *, shift: int) -> str:
