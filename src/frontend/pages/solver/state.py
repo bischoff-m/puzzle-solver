@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import reflex as rx
 
 from puzzle_solver.api import (
+    get_cube_solution_shift,
     get_puzzle_is_flipped,
     list_puzzle_assets,
     load_puzzle,
@@ -46,6 +47,10 @@ class SolverState(rx.State):
 
     flat_solution_count: int = 0
     cube_solution_count: int = 0
+
+    flat_x: int = 0
+    flat_y: int = 0
+    cube_shift: int = 0
 
     piece_names: list[str] = []
 
@@ -148,6 +153,8 @@ class SolverState(rx.State):
     def _replot_flat(self) -> None:
         if self.flat_solution_count <= 0:
             self.flat_figure = go.Figure()
+            self.flat_x = 0
+            self.flat_y = 0
             return
         i = max(
             0, min(int(self.flat_solution_index), self.flat_solution_count - 1)
@@ -158,9 +165,22 @@ class SolverState(rx.State):
         sol = self._flat_sol_from_json(self.flat_solutions[i])
         self.flat_figure = plot_flat_solution(board, sol)
 
+        # Calculate X and Y
+        flat_x = 0
+        flat_y = 0
+        for _name, occ in sol.items():
+            for (x, y), dots in occ.items():
+                if y == 3:
+                    flat_x += dots
+                if x in (4, 5):
+                    flat_y += dots
+        self.flat_x = flat_x
+        self.flat_y = flat_y
+
     def _replot_cube(self) -> None:
         if self.cube_solution_count <= 0:
             self.cube_figure = go.Figure()
+            self.cube_shift = 0
             return
         i = max(
             0, min(int(self.cube_solution_index), self.cube_solution_count - 1)
@@ -170,6 +190,7 @@ class SolverState(rx.State):
         _board, pieces = load_puzzle(path)
         sol = self._cube_sol_from_json(self.cube_solutions[i])
         self.cube_figure = plot_cube_solution(pieces, sol)
+        self.cube_shift = get_cube_solution_shift(pieces, sol)
 
     @rx.event
     def select_puzzle(self, puzzle: str):
@@ -254,12 +275,24 @@ class SolverState(rx.State):
             self.flat_solution_count = len(self.flat_solutions)
             self.flat_solution_index = 0
             if self.flat_solution_count > 0:
-                self.flat_figure = plot_flat_solution(
-                    board, self._flat_sol_from_json(self.flat_solutions[0])
-                )
+                sol = self._flat_sol_from_json(self.flat_solutions[0])
+                self.flat_figure = plot_flat_solution(board, sol)
+                # Calculate X and Y
+                flat_x = 0
+                flat_y = 0
+                for _name, occ in sol.items():
+                    for (x, y), dots in occ.items():
+                        if y == 3:
+                            flat_x += dots
+                        if x in (4, 5):
+                            flat_y += dots
+                self.flat_x = flat_x
+                self.flat_y = flat_y
             else:
                 self.flat_error = "No flat solutions found"
                 self.flat_figure = go.Figure()
+                self.flat_x = 0
+                self.flat_y = 0
         except Exception as e:
             self.flat_error = str(e)
             self.flat_solutions = []
@@ -284,12 +317,13 @@ class SolverState(rx.State):
             self.cube_solution_count = len(self.cube_solutions)
             self.cube_solution_index = 0
             if self.cube_solution_count > 0:
-                self.cube_figure = plot_cube_solution(
-                    pieces, self._cube_sol_from_json(self.cube_solutions[0])
-                )
+                sol = self._cube_sol_from_json(self.cube_solutions[0])
+                self.cube_figure = plot_cube_solution(pieces, sol)
+                self.cube_shift = get_cube_solution_shift(pieces, sol)
             else:
                 self.cube_error = "No cube solutions found"
                 self.cube_figure = go.Figure()
+                self.cube_shift = 0
         except Exception as e:
             self.cube_error = str(e)
             self.cube_solutions = []

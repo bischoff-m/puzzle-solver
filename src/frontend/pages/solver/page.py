@@ -73,6 +73,11 @@ def page() -> rx.Component:
                 rx.text("Solutions:"),
                 rx.text(SolverState.flat_solution_count),
                 rx.spacer(),
+                rx.text("X:"),
+                rx.text(SolverState.flat_x),
+                rx.text("Y:"),
+                rx.text(SolverState.flat_y),
+                rx.spacer(),
                 rx.button(
                     "Prev",
                     on_click=SolverState.prev_flat_solution,
@@ -131,6 +136,9 @@ def page() -> rx.Component:
             rx.hstack(
                 rx.text("Solutions:"),
                 rx.text(SolverState.cube_solution_count),
+                rx.spacer(),
+                rx.text("Shift:"),
+                rx.text(SolverState.cube_shift),
                 rx.spacer(),
                 rx.button(
                     "Prev",

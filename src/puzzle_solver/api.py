@@ -12,7 +12,7 @@ from .grids import (
     piece_grid_from_border12,
 )
 from .plotting import plot_cube_solution, plot_flat_solution
-from .types import Board, Cell, Piece
+from .types import Board, Cell, Face, Piece
 from .yaml_io import (
     flip_border12_reverse_shift,
     flip_dots16_reverse_shift,
@@ -325,3 +325,18 @@ def solve_and_plot_cube(
         k: (v[0], v[1]) for k, v in sol.items()
     }
     return fig, sol_out
+
+
+def get_cube_solution_shift(
+    pieces: list[Piece], solution: dict[str, tuple[Face, int]]
+) -> int:
+    """Count dots on the bottom face (-Z) of the cube solution."""
+    from .plotting import _voxels_from_solution
+
+    voxels_by_piece = _voxels_from_solution(pieces, solution)
+    total_dots = 0
+    for _name, (_face, occ) in voxels_by_piece.items():
+        for (_x, _y, z), d_dict in occ.items():
+            if z == 0:  # Bottom layer
+                total_dots += d_dict.get("-Z", 0)
+    return total_dots
