@@ -117,7 +117,7 @@ def config_section() -> rx.Component:
             rx.heading("Configuration", size="5"),
             rx.spacer(),
             rx.button(
-                "Reset to defaults",
+                "Reset",
                 on_click=CharacterTableState.reset_to_defaults,
                 variant="outline",
             ),

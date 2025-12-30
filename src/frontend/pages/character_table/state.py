@@ -2,6 +2,7 @@ import json
 import re
 from typing import Any
 
+import numpy as np
 import plotly.graph_objects as go
 import reflex as rx
 from pydantic import BaseModel
@@ -373,11 +374,19 @@ def build_character_table_figure(
             key_indices=[int(shift)],
         )
 
-    def _card_mask(card: PunchCardConfig):
+    # Pre-calculate hole indices for both orientations.
+    punch_holes = np.full(punch_mask.shape, -1, dtype=int)
+    punch_holes[punch_mask == 1] = np.arange(np.sum(punch_mask == 1))
+
+    flipped_mask = punch_mask[::-1, ::-1]
+    flipped_holes = np.full(flipped_mask.shape, -1, dtype=int)
+    flipped_holes[flipped_mask == 1] = np.arange(np.sum(flipped_mask == 1))
+
+    def _card_info(card: PunchCardConfig):
         if not bool(card.flipped):
-            return punch_mask
+            return punch_mask, punch_holes
         # Flip orientation (rotate 180°) for display.
-        return punch_mask[::-1, ::-1]
+        return flipped_mask, flipped_holes
 
     def _card_pos(card: PunchCardConfig) -> tuple[int, int]:
         # UI exposes x/y positions; interpret as col/row offsets.
@@ -409,7 +418,7 @@ def build_character_table_figure(
                 px, py = _card_pos(card)
                 punch_col = px - 1
                 punch_row = py - 1
-                m = _card_mask(card)
+                m, mh = _card_info(card)
                 mr = row - punch_row
                 mc = col - punch_col
                 if (
@@ -417,11 +426,11 @@ def build_character_table_figure(
                     and 0 <= mc < mask_cols
                     and int(m[mr, mc]) == 1
                 ):
-                    # Fill the card's full grid (row-major) starting at top-left,
+                    # Fill the card's holes starting at top-left,
                     # padding with spaces if the word is shorter.
-                    local_linear = int(mr) * int(mask_cols) + int(mc)
+                    hole_idx = int(mh[mr, mc])
                     w = str(card.word or "").upper()
-                    wc = w[local_linear] if local_linear < len(w) else " "
+                    wc = w[hole_idx] if hole_idx < len(w) else " "
                     v = _caesar_shift_char(wc, shift=int(card.shift))
                     break
 
@@ -448,7 +457,7 @@ def build_character_table_figure(
                 # Positions are 1-based to match the user's expectation.
                 punch_col = px - 1
                 punch_row = py - 1
-                m = _card_mask(card)
+                m, _ = _card_info(card)
                 mr = row - punch_row
                 mc = col - punch_col
                 if (

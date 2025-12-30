@@ -50,14 +50,20 @@ def resolve_puzzle_asset(name: str) -> Path:
     return p
 
 
+def character_table_defaults_path() -> Path:
+    return _repo_root() / "assets" / "character_table_defaults.yaml"
+
+
 def load_character_table_defaults(
-    path: str | Path = "character_table_defaults.yaml",
+    path: str | Path | None = None,
 ) -> dict[str, object]:
     """Load default Character Table UI config from a YAML file.
 
     This is intended to be called from the Reflex backend when browser
     localStorage has no saved config.
     """
+    if path is None:
+        path = character_table_defaults_path()
 
     defaults: dict[str, object] = {
         "text": "",
@@ -145,9 +151,11 @@ def load_character_table_defaults(
 
 def save_character_table_defaults(
     config: dict[str, object],
-    path: str | Path = "character_table_defaults.yaml",
+    path: str | Path | None = None,
 ) -> None:
     """Write Character Table defaults to the backend YAML file."""
+    if path is None:
+        path = character_table_defaults_path()
 
     class _Dumper(yaml.SafeDumper):
         pass
