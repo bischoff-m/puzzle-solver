@@ -28,6 +28,24 @@ def _discrete_colorscale(colors: list[str]) -> list[tuple[float, str]]:
     return scale
 
 
+def _get_dot_offsets(n: int) -> list[tuple[float, float]]:
+    """Relative offsets for 1-6 dots in a unit square [-0.5, 0.5]."""
+    s = 0.25
+    if n == 1:
+        return [(0.0, 0.0)]
+    if n == 2:
+        return [(-s, -s), (s, s)]
+    if n == 3:
+        return [(-s, -s), (0.0, 0.0), (s, s)]
+    if n == 4:
+        return [(-s, -s), (-s, s), (s, -s), (s, s)]
+    if n == 5:
+        return [(-s, -s), (-s, s), (0.0, 0.0), (s, -s), (s, s)]
+    if n == 6:
+        return [(-s, -s), (-s, 0.0), (-s, s), (s, -s), (s, 0.0), (s, s)]
+    return []
+
+
 def _qualitative_palette(n: int) -> list[str]:
     # Avoid reaching into Plotly's template typing (varies across versions and
     # is not always modeled in type stubs). Keep a stable default palette.
@@ -66,7 +84,7 @@ def _character_mapping_theme(theme: str) -> dict[str, str]:
 
 
 def plot_flat_solution(
-    board: Board, solution: dict[str, set[Cell]]
+    board: Board, solution: dict[str, dict[Cell, int]]
 ) -> go.Figure:
     """Return a Plotly figure for the flat-board solution."""
     board_filled = grid_to_cells(board.grid)
@@ -81,10 +99,16 @@ def plot_flat_solution(
     grid_int = np.zeros((board_h, board_w), dtype=int)
     for x, y in board_filled:
         grid_int[y, x] = frame_value
+
+    dot_xs, dot_ys = [], []
     for name, occ in piece_items:
         v = piece_index[name]
-        for x, y in occ:
+        for (x, y), dots in occ.items():
             grid_int[y, x] = v
+            if 1 <= dots <= 6:
+                for dx, dy in _get_dot_offsets(dots):
+                    dot_xs.append(x + dx)
+                    dot_ys.append(y + dy)
 
     piece_colors = _qualitative_palette(max(6, len(piece_items)))[
         : len(piece_items)
@@ -92,20 +116,32 @@ def plot_flat_solution(
     colors = ["#ffffff", *piece_colors, "#c0c0c0"]
     colorscale = _discrete_colorscale(colors)
 
-    fig = go.Figure(
-        data=[
-            go.Heatmap(
-                z=grid_int,
-                zmin=0,
-                zmax=frame_value,
-                colorscale=colorscale,
-                showscale=False,
+    data: list[object] = [
+        go.Heatmap(
+            z=grid_int,
+            zmin=0,
+            zmax=frame_value,
+            colorscale=colorscale,
+            showscale=False,
+            hoverinfo="skip",
+            xgap=1,
+            ygap=1,
+        )
+    ]
+
+    if dot_xs:
+        data.append(
+            go.Scatter(
+                x=dot_xs,
+                y=dot_ys,
+                mode="markers",
+                marker=dict(size=8, color="black", line=dict(width=0)),
+                showlegend=False,
                 hoverinfo="skip",
-                xgap=1,
-                ygap=1,
             )
-        ]
-    )
+        )
+
+    fig = go.Figure(data=data)
 
     fig.update_layout(
         title="Flat solution",
@@ -198,32 +234,51 @@ def plot_pieces_row(
     w = n * w_piece + (n - 1) * margin
 
     grid_int = np.zeros((h, w), dtype=int)
+    dot_xs, dot_ys = [], []
+
     for i, p in enumerate(pieces_sorted):
         x0 = i * (w_piece + margin)
         for y in range(4):
             for x in range(4):
                 if p.grid[y][x]:
                     grid_int[y, x0 + x] = i + 1
+                    dots = p.dots_grid[y][x] if p.dots_grid else 0
+                    if 1 <= dots <= 6:
+                        for dx, dy in _get_dot_offsets(dots):
+                            dot_xs.append(x0 + x + dx)
+                            dot_ys.append(y + dy)
 
     t = _character_mapping_theme(theme)
     palette = _qualitative_palette(max(6, n))[:n]
     colors = [t["cell_bg"], *palette]
     colorscale = _discrete_colorscale(colors)
 
-    fig = go.Figure(
-        data=[
-            go.Heatmap(
-                z=grid_int,
-                zmin=0,
-                zmax=n,
-                colorscale=colorscale,
-                showscale=False,
+    data: list[object] = [
+        go.Heatmap(
+            z=grid_int,
+            zmin=0,
+            zmax=n,
+            colorscale=colorscale,
+            showscale=False,
+            hoverinfo="skip",
+            xgap=1,
+            ygap=1,
+        )
+    ]
+
+    if dot_xs:
+        data.append(
+            go.Scatter(
+                x=dot_xs,
+                y=dot_ys,
+                mode="markers",
+                marker=dict(size=8, color="black", line=dict(width=0)),
+                showlegend=False,
                 hoverinfo="skip",
-                xgap=1,
-                ygap=1,
             )
-        ]
-    )
+        )
+
+    fig = go.Figure(data=data)
     fig.update_layout(
         title="Pieces",
         margin=dict(l=10, r=10, t=50, b=10),
@@ -245,17 +300,17 @@ def plot_pieces_row(
 
 def _voxels_from_solution(
     pieces: list[Piece], solution: dict[str, tuple[Face, int]]
-) -> dict[str, set[Voxel]]:
+) -> dict[str, tuple[Face, dict[Voxel, int]]]:
     piece_by_name: dict[str, Piece] = {p.name: p for p in pieces}
 
-    out: dict[str, set[Voxel]] = {}
+    out: dict[str, tuple[Face, dict[Voxel, int]]] = {}
     for name, (face, rot) in solution.items():
         piece = piece_by_name.get(name)
         if piece is None:
             raise KeyError(f"Piece {name!r} not found in pieces")
 
-        occ: set[Voxel] | None = None
-        for f, r, voxels in _enumerate_cube_placements(piece.grid):
+        occ: dict[Voxel, int] | None = None
+        for f, r, voxels in _enumerate_cube_placements(piece):
             if f == face and r == rot:
                 occ = voxels
                 break
@@ -263,7 +318,7 @@ def _voxels_from_solution(
             raise RuntimeError(
                 f"Could not reconstruct placement for piece {name}"
             )
-        out[name] = occ
+        out[name] = (face, occ)
     return out
 
 
@@ -310,6 +365,45 @@ def _add_voxel_cube_to_mesh(
         kk.append(base + c)
 
 
+def _add_dots_3d(
+    dot_xs: list[float],
+    dot_ys: list[float],
+    dot_zs: list[float],
+    n: int,
+    face: Face,
+    x: int,
+    y: int,
+    z: int,
+) -> None:
+    offsets_2d = _get_dot_offsets(n)
+    for du, dv in offsets_2d:
+        # du, dv are in [-0.25, 0.25]
+        if face == "+Z":
+            dot_xs.append(x + 0.5 + du)
+            dot_ys.append(y + 0.5 + dv)
+            dot_zs.append(z + 1.01)
+        elif face == "-Z":
+            dot_xs.append(x + 0.5 + du)
+            dot_ys.append(y + 0.5 + dv)
+            dot_zs.append(z - 0.01)
+        elif face == "+Y":
+            dot_xs.append(x + 0.5 + du)
+            dot_ys.append(y + 1.01)
+            dot_zs.append(z + 0.5 + dv)
+        elif face == "-Y":
+            dot_xs.append(x + 0.5 + du)
+            dot_ys.append(y - 0.01)
+            dot_zs.append(z + 0.5 + dv)
+        elif face == "+X":
+            dot_xs.append(x + 1.01)
+            dot_ys.append(y + 0.5 + du)
+            dot_zs.append(z + 0.5 + dv)
+        elif face == "-X":
+            dot_xs.append(x - 0.01)
+            dot_ys.append(y + 0.5 + du)
+            dot_zs.append(z + 0.5 + dv)
+
+
 def plot_cube_solution(
     pieces: list[Piece], solution: dict[str, tuple[Face, int]]
 ) -> go.Figure:
@@ -330,6 +424,8 @@ def plot_cube_solution(
     voxel_size = 1.0
     inset = 0.02  # tiny inset to reduce z-fighting between adjacent cubes
 
+    dot_xs, dot_ys, dot_zs = [], [], []
+
     for name in names_sorted:
         xs: list[float] = []
         ys: list[float] = []
@@ -338,7 +434,8 @@ def plot_cube_solution(
         jj: list[int] = []
         kk: list[int] = []
 
-        for x, y, z in sorted(voxels_by_piece[name]):
+        face, occ = voxels_by_piece[name]
+        for (x, y, z), dots in sorted(occ.items()):
             _add_voxel_cube_to_mesh(
                 x0=float(x) + inset,
                 y0=float(y) + inset,
@@ -351,6 +448,8 @@ def plot_cube_solution(
                 jj=jj,
                 kk=kk,
             )
+            if dots > 0:
+                _add_dots_3d(dot_xs, dot_ys, dot_zs, dots, face, x, y, z)
 
         data.append(
             go.Mesh3d(
@@ -366,6 +465,20 @@ def plot_cube_solution(
                 name=name,
                 hovertemplate=f"{name}<extra></extra>",
                 showscale=False,
+            )
+        )
+
+    if dot_xs:
+        data.append(
+            go.Scatter3d(
+                x=dot_xs,
+                y=dot_ys,
+                z=dot_zs,
+                mode="markers",
+                marker=dict(size=6, color="black", line=dict(width=0)),
+                name="Dots",
+                showlegend=False,
+                hoverinfo="skip",
             )
         )
 

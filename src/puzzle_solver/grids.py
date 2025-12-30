@@ -41,6 +41,22 @@ def piece_grid_from_border12(border12: tuple[bool, ...]) -> Grid:
     return grid
 
 
+def piece_dots_grid_from_dots12(dots12: tuple[int, ...]) -> list[list[int]]:
+    """Return a 4x4 integer grid of dots.
+
+    Inner 2x2 is always 0.
+    """
+    if len(dots12) != 12:
+        raise ValueError("dots12 must have length 12")
+
+    grid = [[0 for _ in range(4)] for _ in range(4)]
+
+    for idx, (x, y) in enumerate(_PIECE_BORDER_COORDS_4X4):
+        grid[y][x] = int(dots12[idx])
+
+    return grid
+
+
 def piece_border12_from_grid(grid: Grid) -> tuple[bool, ...]:
     """Convert a 4x4 piece grid back to its border12 representation."""
     if len(grid) != 4 or any(len(row) != 4 for row in grid):

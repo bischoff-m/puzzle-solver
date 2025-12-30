@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from .grids import flip_grid_y, rotate_grid
-from .types import Face, Grid, Piece, Voxel
+from .types import Face, Piece, Voxel
 
 
 def _face_map(face: Face, u: int, v: int) -> Voxel:
@@ -22,22 +22,28 @@ def _face_map(face: Face, u: int, v: int) -> Voxel:
 
 
 def _enumerate_cube_placements(
-    piece_grid: Grid,
-) -> list[tuple[Face, int, set[Voxel]]]:
+    piece: Piece,
+) -> list[tuple[Face, int, dict[Voxel, int]]]:
     """All (face, rotation) placements of a 4x4 piece on the 4x4x4 cube boundary."""
-    placements: list[tuple[Face, int, set[Voxel]]] = []
+    placements: list[tuple[Face, int, dict[Voxel, int]]] = []
     faces: list[Face] = ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]
 
-    base_grid = flip_grid_y(piece_grid)
+    base_grid = flip_grid_y(piece.grid)
+    base_dots = (
+        flip_grid_y(piece.dots_grid)
+        if piece.dots_grid
+        else [[0] * 4 for _ in range(4)]
+    )
 
     for face in faces:
         for rot in range(4):
             g = rotate_grid(base_grid, rot)
-            occ: set[Voxel] = set()
+            d = rotate_grid(base_dots, rot)
+            occ: dict[Voxel, int] = {}
             for v in range(4):
                 for u in range(4):
                     if g[v][u]:
-                        occ.add(_face_map(face, u, v))
+                        occ[_face_map(face, u, v)] = d[v][u]
             placements.append((face, rot, occ))
     return placements
 
@@ -56,9 +62,8 @@ def solve_cube_pool(
                 if x in (0, 3) or y in (0, 3) or z in (0, 3):
                     boundary.add((x, y, z))
 
-    piece_grids = {p.name: p.grid for p in pieces}
-    placements_by_piece: dict[str, list[tuple[Face, int, set[Voxel]]]] = {
-        name: _enumerate_cube_placements(g) for name, g in piece_grids.items()
+    placements_by_piece: dict[str, list[tuple[Face, int, dict[Voxel, int]]]] = {
+        p.name: _enumerate_cube_placements(p) for p in pieces
     }
 
     # Symmetry breaking: fix the first piece to the top face with a fixed
@@ -103,7 +108,7 @@ def solve_cube_pool(
             gp.quicksum(
                 xvar[(name, pi)]
                 for name, placements in placements_by_piece.items()
-                for pi, (_face, _rot, occ) in enumerate(placements)
+                for pi, (face, rot, occ) in enumerate(placements)
                 if voxel in occ
             )
             == 1,

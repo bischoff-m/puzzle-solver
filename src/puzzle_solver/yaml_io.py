@@ -39,9 +39,30 @@ def _coerce_bool_list(
     return tuple(out)
 
 
-def flip_piece_border12_reverse_shift(
-    border12: tuple[bool, ...],
-) -> tuple[bool, ...]:
+def _coerce_int_list(
+    values: object, *, expected_len: int, label: str
+) -> tuple[int, ...]:
+    if values is None:
+        return tuple([0] * expected_len)
+    if not isinstance(values, (list, tuple)):
+        raise TypeError(f"{label} must be a list")
+    if len(values) != expected_len:
+        raise ValueError(f"{label} must have length {expected_len}")
+
+    out: list[int] = []
+    for i, v in enumerate(values):
+        try:
+            out.append(int(v))
+        except (TypeError, ValueError):
+            raise TypeError(
+                f"{label}[{i}] must be convertible to int, got {type(v).__name__}"
+            )
+    return tuple(out)
+
+
+def flip_border12_reverse_shift(
+    border12: tuple,
+) -> tuple:
     """Flip the border12 encoding by reversing and shifting -1.
 
     The border12 array is a clockwise border starting at the top-left.
@@ -57,7 +78,13 @@ def flip_piece_border12_reverse_shift(
     rev = list(reversed(border12))
     # shift -1 (right by one)
     rev = [rev[-1]] + rev[:-1]
-    return tuple(bool(x) for x in rev)
+    return tuple(rev)
+
+
+def flip_piece_border12_reverse_shift(
+    border12: tuple[bool, ...],
+) -> tuple[bool, ...]:
+    return tuple(bool(x) for x in flip_border12_reverse_shift(border12))
 
 
 def load_puzzle_yaml(
@@ -106,7 +133,12 @@ def load_puzzle_yaml(
                 expected_len=12,
                 label=f"pieces[{idx}].border12",
             )
-            pieces.append(PieceInput(name=name, border12=border12))
+            dots = _coerce_int_list(
+                item.get("dots"),
+                expected_len=12,
+                label=f"pieces[{idx}].dots",
+            )
+            pieces.append(PieceInput(name=name, border12=border12, dots=dots))
     else:
         raise ValueError("pieces must be a list or mapping")
 
@@ -131,7 +163,11 @@ def dump_puzzle_yaml(
         "isFlipped": bool(is_flipped),
         "board": {"border30": list(board.border30)},
         "pieces": [
-            {"name": p.name, "border12": list(p.border12)}
+            {
+                "name": p.name,
+                "border12": list(p.border12),
+                "dots": list(p.dots) if p.dots else [0] * 12,
+            }
             for p in sorted(pieces, key=lambda x: x.name)
         ],
     }

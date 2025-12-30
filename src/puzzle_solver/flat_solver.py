@@ -2,32 +2,39 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from .grids import grid_to_cells, rotate_grid
-from .types import Board, Cell, Grid, Piece
+from .types import Board, Cell, Piece
 
 
 def _enumerate_flat_placements(
-    piece_grid: Grid,
+    piece: Piece,
     board_w: int,
     board_h: int,
     board_filled: set[Cell],
-) -> list[set[Cell]]:
+) -> list[dict[Cell, int]]:
     """All non-overlapping placements for one piece on the board."""
-    placements: list[set[Cell]] = []
+    placements: list[dict[Cell, int]] = []
 
     for rot in range(4):
-        g = rotate_grid(piece_grid, rot)
+        g = rotate_grid(piece.grid, rot)
+        dg = (
+            rotate_grid(piece.dots_grid, rot)
+            if piece.dots_grid
+            else [[0] * 4 for _ in range(4)]
+        )
         cells = grid_to_cells(g)
         for oy in range(0, board_h - 4 + 1):
             for ox in range(0, board_w - 4 + 1):
-                placed = {(ox + x, oy + y) for (x, y) in cells}
-                if placed & board_filled:
+                placed_cells = {(ox + x, oy + y) for (x, y) in cells}
+                if placed_cells & board_filled:
                     continue
-                placements.append(placed)
+                # Map each cell to its dot count
+                cell_dots = {(ox + x, oy + y): dg[y][x] for (x, y) in cells}
+                placements.append(cell_dots)
 
-    uniq: list[set[Cell]] = []
+    uniq: list[dict[Cell, int]] = []
     seen: set[frozenset[Cell]] = set()
     for p in placements:
-        fp = frozenset(p)
+        fp = frozenset(p.keys())
         if fp in seen:
             continue
         seen.add(fp)
@@ -35,16 +42,15 @@ def _enumerate_flat_placements(
     return uniq
 
 
-def solve_flat(board: Board, pieces: list[Piece]) -> dict[str, set[Cell]]:
+def solve_flat(board: Board, pieces: list[Piece]) -> dict[str, dict[Cell, int]]:
     board_w, board_h = 10, 7
     board_filled = grid_to_cells(board.grid)
     board_all = {(x, y) for y in range(board_h) for x in range(board_w)}
     target_cells = board_all - board_filled
 
-    piece_grids = {p.name: p.grid for p in pieces}
-    placements_by_piece: dict[str, list[set[Cell]]] = {
-        name: _enumerate_flat_placements(g, board_w, board_h, board_filled)
-        for name, g in piece_grids.items()
+    placements_by_piece: dict[str, list[dict[Cell, int]]] = {
+        p.name: _enumerate_flat_placements(p, board_w, board_h, board_filled)
+        for p in pieces
     }
 
     m = gp.Model("puzzle_flat")
@@ -83,7 +89,7 @@ def solve_flat(board: Board, pieces: list[Piece]) -> dict[str, set[Cell]]:
             f"No optimal solution found; Gurobi status={m.Status}"
         )
 
-    solution: dict[str, set[Cell]] = {}
+    solution: dict[str, dict[Cell, int]] = {}
     for name, placements in placements_by_piece.items():
         for pi, occ in enumerate(placements):
             if xvar[(name, pi)].X > 0.5:
@@ -101,17 +107,16 @@ def solve_flat_pool(
     *,
     max_solutions: int = 20,
     output_flag: int = 0,
-) -> list[dict[str, set[Cell]]]:
+) -> list[dict[str, dict[Cell, int]]]:
     """Return up to `max_solutions` distinct flat solutions via Gurobi solution pool."""
     board_w, board_h = 10, 7
     board_filled = grid_to_cells(board.grid)
     board_all = {(x, y) for y in range(board_h) for x in range(board_w)}
     target_cells = board_all - board_filled
 
-    piece_grids = {p.name: p.grid for p in pieces}
-    placements_by_piece: dict[str, list[set[Cell]]] = {
-        name: _enumerate_flat_placements(g, board_w, board_h, board_filled)
-        for name, g in piece_grids.items()
+    placements_by_piece: dict[str, list[dict[Cell, int]]] = {
+        p.name: _enumerate_flat_placements(p, board_w, board_h, board_filled)
+        for p in pieces
     }
 
     m = gp.Model("puzzle_flat")
@@ -153,10 +158,10 @@ def solve_flat_pool(
     if m.SolCount <= 0:
         raise RuntimeError("No solutions in pool")
 
-    sols: list[dict[str, set[Cell]]] = []
+    sols: list[dict[str, dict[Cell, int]]] = []
     for sn in range(min(m.SolCount, max_solutions)):
         m.Params.SolutionNumber = sn
-        sol: dict[str, set[Cell]] = {}
+        sol: dict[str, dict[Cell, int]] = {}
         for name, placements in placements_by_piece.items():
             chosen: int | None = None
             for pi in range(len(placements)):

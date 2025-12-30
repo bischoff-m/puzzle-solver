@@ -5,10 +5,18 @@ import yaml
 
 from .cube_solver import solve_cube_pool
 from .flat_solver import solve_flat_pool
-from .grids import board_grid_from_border30, piece_grid_from_border12
+from .grids import (
+    board_grid_from_border30,
+    piece_dots_grid_from_dots12,
+    piece_grid_from_border12,
+)
 from .plotting import plot_cube_solution, plot_flat_solution
-from .types import Board, Piece
-from .yaml_io import flip_piece_border12_reverse_shift, load_puzzle_yaml
+from .types import Board, Cell, Piece
+from .yaml_io import (
+    flip_border12_reverse_shift,
+    flip_piece_border12_reverse_shift,
+    load_puzzle_yaml,
+)
 
 
 def _repo_root() -> Path:
@@ -225,9 +233,18 @@ def load_puzzle_with_meta(
     pieces: list[Piece] = []
     for p in piece_inputs:
         border12 = p.border12
+        dots12 = p.dots if p.dots is not None else tuple([0] * 12)
         if bool(is_flipped):
             border12 = flip_piece_border12_reverse_shift(border12)
-        pieces.append(Piece(p.name, piece_grid_from_border12(border12)))
+            dots12 = flip_border12_reverse_shift(dots12)
+
+        pieces.append(
+            Piece(
+                p.name,
+                piece_grid_from_border12(border12),
+                piece_dots_grid_from_dots12(dots12),
+            )
+        )
 
     board = Board(board_grid_from_border30(board_input.border30))
     return board, pieces, bool(is_flipped)
@@ -265,7 +282,7 @@ def solve_and_plot_flat(
     max_solutions: int = 1,
     output_flag: int = 0,
     solution_index: int = 0,
-) -> tuple[go.Figure, dict[str, set[tuple[int, int]]]]:
+) -> tuple[go.Figure, dict[str, dict[Cell, int]]]:
     """Solve the flat puzzle and return (figure, raw_solution)."""
     board, pieces = load_puzzle(path)
     sols = solve_flat_pool(

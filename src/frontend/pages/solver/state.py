@@ -79,19 +79,24 @@ class SolverState(rx.State):
 
     def _flat_sol_from_json(
         self, sol: dict[str, list[list[int]]]
-    ) -> dict[str, set[tuple[int, int]]]:
-        out: dict[str, set[tuple[int, int]]] = {}
+    ) -> dict[str, dict[tuple[int, int], int]]:
+        out: dict[str, dict[tuple[int, int], int]] = {}
         for name, cells in sol.items():
-            occ: set[tuple[int, int]] = set()
+            occ: dict[tuple[int, int], int] = {}
             if isinstance(cells, list):
                 for item in cells:
                     if (
                         isinstance(item, list)
-                        and len(item) == 2
+                        and len(item) >= 2
                         and isinstance(item[0], int)
                         and isinstance(item[1], int)
                     ):
-                        occ.add((item[0], item[1]))
+                        dots = (
+                            item[2]
+                            if len(item) > 2 and isinstance(item[2], int)
+                            else 0
+                        )
+                        occ[(item[0], item[1])] = dots
             out[str(name)] = occ
         return out
 
@@ -224,7 +229,10 @@ class SolverState(rx.State):
             )
             self.flat_solutions = [
                 {
-                    name: [[int(x), int(y)] for (x, y) in sorted(list(occ))]
+                    name: [
+                        [int(x), int(y), int(dots)]
+                        for (x, y), dots in sorted(list(occ.items()))
+                    ]
                     for name, occ in sol.items()
                 }
                 for sol in flat_sols

@@ -11,10 +11,13 @@ Grid = list[list[bool]]
 class PieceInput:
     name: str
     border12: tuple[bool, ...]
+    dots: tuple[int, ...] | None = None
 
     def __post_init__(self) -> None:
         if len(self.border12) != 12:
             raise ValueError(f"Piece {self.name}: border12 must have length 12")
+        if self.dots is not None and len(self.dots) != 12:
+            raise ValueError(f"Piece {self.name}: dots must have length 12")
 
 
 @dataclass(frozen=True)
@@ -30,10 +33,16 @@ class BoardInput:
 class Piece:
     name: str
     grid: Grid
+    dots_grid: list[list[int]] | None = None
 
     def __post_init__(self) -> None:
         if len(self.grid) != 4 or any(len(row) != 4 for row in self.grid):
             raise ValueError(f"Piece {self.name}: grid must be 4x4")
+        if self.dots_grid is not None:
+            if len(self.dots_grid) != 4 or any(
+                len(row) != 4 for row in self.dots_grid
+            ):
+                raise ValueError(f"Piece {self.name}: dots_grid must be 4x4")
 
 
 @dataclass(frozen=True)

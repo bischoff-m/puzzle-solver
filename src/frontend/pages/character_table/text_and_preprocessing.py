@@ -13,7 +13,6 @@ def text_and_preprocessing_section() -> rx.Component:
             width="100%",
             height="12em",
         ),
-        rx.text("Line breaks are removed before table generation."),
         width="100%",
         spacing="2",
     )

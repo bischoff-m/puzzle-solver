@@ -44,12 +44,13 @@ text: |-
 table_width: 32
 code_word: KAKTUS
 show_encrypted: true
+vigenere_backward: true
 punch_cards:
 - x: 24
   y: 6
   flipped: false
   isActive: true
-  shift: 0
+  shift: -3
   word: PELIKAN
 - x: 5
   y: 11
