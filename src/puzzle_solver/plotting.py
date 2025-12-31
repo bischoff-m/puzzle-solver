@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from .cube_solver import _enumerate_cube_placements
-from .grids import grid_to_cells
+from .grids import _PIECE_BORDER_COORDS_4X4, grid_to_cells, rotate_grid
 from .types import Board, Cell, Face, Piece, Voxel
 
 
@@ -84,7 +84,11 @@ def _character_mapping_theme(theme: str) -> dict[str, str]:
 
 
 def plot_flat_solution(
-    board: Board, solution: dict[str, dict[Cell, int]]
+    board: Board,
+    pieces: list[Piece],
+    solution: dict[str, dict[Cell, int]],
+    *,
+    is_flipped: bool = False,
 ) -> go.Figure:
     """Return a Plotly figure for the flat-board solution."""
     board_filled = grid_to_cells(board.grid)
@@ -100,11 +104,73 @@ def plot_flat_solution(
     for x, y in board_filled:
         grid_int[y, x] = frame_value
 
+    # Prepare hover text for border voxels (1-12)
+    hover_text = np.full((board_h, board_w), "", dtype=object)
+
     dot_xs, dot_ys = [], []
     for name, occ in piece_items:
         v = piece_index[name]
+        # Find the Piece object to account for rotation
+        p_obj = next((p for p in pieces if p.name == name), None)
+        ox, oy, rot = 0, 0, 0
+        if p_obj:
+            found = False
+            cells_set = set(occ.keys())
+            min_x = min(c[0] for c in cells_set)
+            max_x = max(c[0] for c in cells_set)
+            min_y = min(c[1] for c in cells_set)
+            max_y = max(c[1] for c in cells_set)
+
+            for r in range(4):
+                g = rotate_grid(p_obj.grid, r)
+                rel_cells = grid_to_cells(g)
+                # Try to find (ox, oy)
+                for cand_ox in range(max_x - 3, min_x + 1):
+                    for cand_oy in range(max_y - 3, min_y + 1):
+                        if {
+                            (cand_ox + rx, cand_oy + ry)
+                            for (rx, ry) in rel_cells
+                        } == cells_set:
+                            ox, oy, rot = cand_ox, cand_oy, r
+                            found = True
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+
         for (x, y), dots in occ.items():
             grid_int[y, x] = v
+            if p_obj and found:
+                # Find the index in the ORIGINAL piece (unrotated)
+                # (x, y) = (ox + rx, oy + ry) where (rx, ry) is in rotated grid
+                rx, ry = x - ox, y - oy
+                # To find the original (ux, uy), we need to "unrotate" (rx, ry)
+                # rotate_grid(grid, r) means:
+                # r=1: (x,y) -> (3-y, x)
+                # r=2: (x,y) -> (3-x, 3-y)
+                # r=3: (x,y) -> (y, 3-x)
+                # So unrotate is:
+                if rot == 0:
+                    ux, uy = rx, ry
+                elif rot == 1:
+                    ux, uy = ry, 3 - rx
+                elif rot == 2:
+                    ux, uy = 3 - rx, 3 - ry
+                elif rot == 3:
+                    ux, uy = 3 - ry, rx
+                else:
+                    ux, uy = rx, ry
+
+                if (ux, uy) in _PIECE_BORDER_COORDS_4X4:
+                    p = _PIECE_BORDER_COORDS_4X4.index((ux, uy))
+                    if is_flipped:
+                        # Convert position p in flipped border back to YAML index k (0-11)
+                        k = 0 if p == 0 else 12 - p
+                    else:
+                        k = p
+                    hover_text[y, x] = f"Index: {k}"
+
             if 1 <= dots <= 6:
                 for dx, dy in _get_dot_offsets(dots):
                     dot_xs.append(x + dx)
@@ -123,7 +189,8 @@ def plot_flat_solution(
             zmax=frame_value,
             colorscale=colorscale,
             showscale=False,
-            hoverinfo="skip",
+            text=hover_text,
+            hovertemplate="%{text}<extra></extra>",
             xgap=1,
             ygap=1,
         )

@@ -292,7 +292,7 @@ def solve_and_plot_flat(
     solution_index: int = 0,
 ) -> tuple[go.Figure, dict[str, dict[Cell, int]]]:
     """Solve the flat puzzle and return (figure, raw_solution)."""
-    board, pieces = load_puzzle(path)
+    board, pieces, is_flipped = load_puzzle_with_meta(path)
     sols = solve_flat_pool(
         board, pieces, max_solutions=max_solutions, output_flag=output_flag
     )
@@ -300,7 +300,7 @@ def solve_and_plot_flat(
         raise RuntimeError("No flat solutions returned")
     i = max(0, min(solution_index, len(sols) - 1))
     sol = sols[i]
-    fig = plot_flat_solution(board, sol)
+    fig = plot_flat_solution(board, pieces, sol, is_flipped=is_flipped)
     return fig, sol
 
 

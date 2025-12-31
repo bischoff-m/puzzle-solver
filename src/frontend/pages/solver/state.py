@@ -198,7 +198,9 @@ class SolverState(rx.State):
         path = resolve_puzzle_asset(self.selected_puzzle)
         board, pieces = load_puzzle(path)
         sol = self._flat_sol_from_json(self.flat_solutions[i])
-        self.flat_figure = plot_flat_solution(board, sol)
+        self.flat_figure = plot_flat_solution(
+            board, pieces, sol, is_flipped=bool(self.puzzle_is_flipped)
+        )
 
         # Calculate X and Y
         flat_x = 0
@@ -311,7 +313,9 @@ class SolverState(rx.State):
             self.flat_solution_index = 0
             if self.flat_solution_count > 0:
                 sol = self._flat_sol_from_json(self.flat_solutions[0])
-                self.flat_figure = plot_flat_solution(board, sol)
+                self.flat_figure = plot_flat_solution(
+                    board, pieces, sol, is_flipped=bool(self.puzzle_is_flipped)
+                )
                 # Calculate X and Y
                 flat_x = 0
                 flat_y = 0

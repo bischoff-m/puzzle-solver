@@ -37,13 +37,13 @@ punch_cards:
     y: 4
     flipped: false
     isActive: true
-    shift: 0
+    shift: 9
     word: ERDFERKEL
   - x: 4
     y: 15
     flipped: false
     isActive: true
-    shift: 0
+    shift: 7
     word: SPITZMAUS
   - x: 14
     y: 13

@@ -14,7 +14,7 @@ def page() -> rx.Component:
                 rx.foreach(
                     SolverState.puzzles,
                     lambda p: rx.button(
-                        p,
+                        p.replace(".yaml", "").replace("-", " ").title(),
                         on_click=SolverState.select_puzzle(p),
                         variant=rx.cond(
                             SolverState.selected_puzzle == p,
