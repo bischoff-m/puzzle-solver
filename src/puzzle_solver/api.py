@@ -343,14 +343,8 @@ def get_cube_solution_shift(
     return total_dots
 
 
-def randomize_puzzle_dots(
-    path: Path,
-    mean_top: float,
-    var_top: float,
-    mean_side: float,
-    var_side: float,
-) -> None:
-    """Randomize dots on top and sides of pieces and save to YAML."""
+def randomize_puzzle_top_dots(path: Path, mean: float, variance: float) -> None:
+    """Randomize dots on top of pieces and save to YAML."""
     import numpy as np
 
     from .types import PieceInput
@@ -369,14 +363,50 @@ def randomize_puzzle_dots(
 
     new_pieces: list[PieceInput] = []
     for p in piece_inputs:
-        dots_top_int = sample_rejected(12, mean_top, var_top)
-        dots_side_int = sample_rejected(16, mean_side, var_side)
-
+        dots_top_int = sample_rejected(12, mean, variance)
         new_pieces.append(
             PieceInput(
                 name=p.name,
                 border12=p.border12,
                 dots=tuple(dots_top_int),
+                dots_side16=p.dots_side16,
+            )
+        )
+
+    path.write_text(
+        dump_puzzle_yaml(board_input, new_pieces, is_flipped=is_flipped),
+        encoding="utf-8",
+    )
+
+
+def randomize_puzzle_side_dots(
+    path: Path, mean: float, variance: float
+) -> None:
+    """Randomize dots on sides of pieces and save to YAML."""
+    import numpy as np
+
+    from .types import PieceInput
+
+    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+
+    def sample_rejected(n: int, mean: float, variance: float) -> list[int]:
+        std = np.sqrt(max(0, variance))
+        out = []
+        while len(out) < n:
+            val = np.random.normal(mean, std)
+            rounded = int(np.round(val))
+            if 0 <= rounded <= 6:
+                out.append(rounded)
+        return out
+
+    new_pieces: list[PieceInput] = []
+    for p in piece_inputs:
+        dots_side_int = sample_rejected(16, mean, variance)
+        new_pieces.append(
+            PieceInput(
+                name=p.name,
+                border12=p.border12,
+                dots=p.dots,
                 dots_side16=tuple(dots_side_int),
             )
         )

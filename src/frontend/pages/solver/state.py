@@ -7,7 +7,8 @@ from puzzle_solver.api import (
     list_puzzle_assets,
     load_puzzle,
     load_puzzle_with_meta,
-    randomize_puzzle_dots,
+    randomize_puzzle_side_dots,
+    randomize_puzzle_top_dots,
     resolve_puzzle_asset,
 )
 from puzzle_solver.api import (
@@ -377,17 +378,32 @@ class SolverState(rx.State):
         yield SolverState.select_puzzle(self.selected_puzzle)
 
     @rx.event
-    def randomize_dots(self):
+    def randomize_top_dots(self):
         if not self.selected_puzzle:
             return
         try:
             path = resolve_puzzle_asset(self.selected_puzzle)
-            randomize_puzzle_dots(
+            randomize_puzzle_top_dots(
                 path,
-                mean_top=float(self.randomize_mean_top),
-                var_top=float(self.randomize_var_top),
-                mean_side=float(self.randomize_mean_side),
-                var_side=float(self.randomize_var_side),
+                mean=float(self.randomize_mean_top),
+                variance=float(self.randomize_var_top),
+            )
+        except Exception as e:
+            self.flat_error = str(e)
+            self.cube_error = str(e)
+            return
+        yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def randomize_side_dots(self):
+        if not self.selected_puzzle:
+            return
+        try:
+            path = resolve_puzzle_asset(self.selected_puzzle)
+            randomize_puzzle_side_dots(
+                path,
+                mean=float(self.randomize_mean_side),
+                variance=float(self.randomize_var_side),
             )
         except Exception as e:
             self.flat_error = str(e)

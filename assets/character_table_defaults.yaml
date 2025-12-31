@@ -21,39 +21,39 @@ code_word: KAKTUS
 show_encrypted: true
 vigenere_backward: true
 punch_cards:
-- x: 18
-  y: 5
-  flipped: false
-  isActive: true
-  shift: 0
-  word: PELIKAN
-- x: 2
-  y: 7
-  flipped: false
-  isActive: true
-  shift: 0
-  word: ARMADILLO
-- x: 9
-  y: 4
-  flipped: false
-  isActive: true
-  shift: 0
-  word: ERDFERKEL
-- x: 4
-  y: 15
-  flipped: false
-  isActive: true
-  shift: 0
-  word: SPITZMAUS
-- x: 14
-  y: 13
-  flipped: false
-  isActive: true
-  shift: 0
-  word: CHIHUAHUA
-- x: 8
-  y: 12
-  flipped: false
-  isActive: true
-  shift: 0
-  word: WALROSS
+  - x: 18
+    y: 5
+    flipped: false
+    isActive: true
+    shift: 16
+    word: PELIKAN
+  - x: 2
+    y: 7
+    flipped: false
+    isActive: true
+    shift: 12
+    word: ARMADILLO
+  - x: 9
+    y: 4
+    flipped: false
+    isActive: true
+    shift: 0
+    word: ERDFERKEL
+  - x: 4
+    y: 15
+    flipped: false
+    isActive: true
+    shift: 0
+    word: SPITZMAUS
+  - x: 14
+    y: 13
+    flipped: false
+    isActive: true
+    shift: 0
+    word: CHIHUAHUA
+  - x: 8
+    y: 12
+    flipped: false
+    isActive: true
+    shift: 0
+    word: WALROSS
