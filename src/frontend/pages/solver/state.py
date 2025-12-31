@@ -7,6 +7,7 @@ from puzzle_solver.api import (
     list_puzzle_assets,
     load_puzzle,
     load_puzzle_with_meta,
+    randomize_puzzle_dots,
     resolve_puzzle_asset,
 )
 from puzzle_solver.api import (
@@ -52,6 +53,11 @@ class SolverState(rx.State):
     flat_y: int = 0
     cube_shift: int = 0
 
+    randomize_mean_top: float = 3.0
+    randomize_var_top: float = 1.0
+    randomize_mean_side: float = 3.0
+    randomize_var_side: float = 1.0
+
     piece_names: list[str] = []
 
     solving_flat: bool = False
@@ -94,6 +100,34 @@ class SolverState(rx.State):
             self.cube_error = msg
             return
         yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def set_randomize_mean_top(self, value: str):
+        try:
+            self.randomize_mean_top = float(value)
+        except (ValueError, TypeError):
+            pass
+
+    @rx.event
+    def set_randomize_var_top(self, value: str):
+        try:
+            self.randomize_var_top = float(value)
+        except (ValueError, TypeError):
+            pass
+
+    @rx.event
+    def set_randomize_mean_side(self, value: str):
+        try:
+            self.randomize_mean_side = float(value)
+        except (ValueError, TypeError):
+            pass
+
+    @rx.event
+    def set_randomize_var_side(self, value: str):
+        try:
+            self.randomize_var_side = float(value)
+        except (ValueError, TypeError):
+            pass
 
     def _flat_sol_from_json(
         self, sol: dict[str, list[list[int]]]
@@ -170,9 +204,9 @@ class SolverState(rx.State):
         flat_y = 0
         for _name, occ in sol.items():
             for (x, y), dots in occ.items():
-                if y == 3:
-                    flat_x += dots
                 if x in (4, 5):
+                    flat_x += dots
+                if y == 3:
                     flat_y += dots
         self.flat_x = flat_x
         self.flat_y = flat_y
@@ -282,9 +316,9 @@ class SolverState(rx.State):
                 flat_y = 0
                 for _name, occ in sol.items():
                     for (x, y), dots in occ.items():
-                        if y == 3:
-                            flat_x += dots
                         if x in (4, 5):
+                            flat_x += dots
+                        if y == 3:
                             flat_y += dots
                 self.flat_x = flat_x
                 self.flat_y = flat_y
@@ -340,6 +374,25 @@ class SolverState(rx.State):
 
     @rx.event
     def solve_cube(self):
+        yield SolverState.select_puzzle(self.selected_puzzle)
+
+    @rx.event
+    def randomize_dots(self):
+        if not self.selected_puzzle:
+            return
+        try:
+            path = resolve_puzzle_asset(self.selected_puzzle)
+            randomize_puzzle_dots(
+                path,
+                mean_top=float(self.randomize_mean_top),
+                var_top=float(self.randomize_var_top),
+                mean_side=float(self.randomize_mean_side),
+                var_side=float(self.randomize_var_side),
+            )
+        except Exception as e:
+            self.flat_error = str(e)
+            self.cube_error = str(e)
+            return
         yield SolverState.select_puzzle(self.selected_puzzle)
 
     @rx.event

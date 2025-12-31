@@ -16,68 +16,43 @@ text: |-
   Probier' mal, zwei, drei, vier
 
   Ist das dein Ernst?
-
-  Ho-ho, es gibt nichts bess'res! Das ist ein herrliches Gefühl wenn die kitzeln
-
-  Denn mit Gemütlichkeit komt auch das Glück zu dir (Wie denn?)
-  Es kommt zu dir
-
-  Probier's mal mit Gemütlichkeit
-  Mit Ruhe und Gemütlichkeit
-  Vertreibst du deinen ganzen Sorgenkram
-  Und wenn du stets gemütlich bist
-  Und etwas appetitlich ist
-  Dann nimm es dir, egal woher es kam
-
-  Na, und pflückst du gern Beeren
-  Und die piekst dich dabei (Au!)
-  Dann lass dich belehren:
-  Schmerz geht bald vorbei
-
-  Du musst bescheiden aber nicht gierig im Leben sein
-  Sonst tust du dir weh
-  Du bist verletzt und zahlst nur drauf
-  Darum pflücke gleich mit dem richt'gen Dreh
-  Hast du das jetzt kapiert? (Vollkommen, danke Balou!)
-  Denn mit Gemütlichkeit kommt auch das Glück zu dir (Du hast wirklich Recht)
-  Es kommt zu dir
-table_width: 32
+table_width: 22
 code_word: KAKTUS
 show_encrypted: true
 vigenere_backward: true
 punch_cards:
-- x: 24
-  y: 6
+- x: 18
+  y: 5
   flipped: false
   isActive: true
-  shift: -3
+  shift: 0
   word: PELIKAN
-- x: 5
-  y: 11
+- x: 2
+  y: 7
   flipped: false
   isActive: true
   shift: 0
   word: ARMADILLO
-- x: 15
+- x: 9
   y: 4
   flipped: false
   isActive: true
   shift: 0
   word: ERDFERKEL
-- x: 8
-  y: 26
+- x: 4
+  y: 15
   flipped: false
   isActive: true
   shift: 0
   word: SPITZMAUS
-- x: 21
-  y: 22
+- x: 14
+  y: 13
   flipped: false
   isActive: true
   shift: 0
   word: CHIHUAHUA
-- x: 14
-  y: 15
+- x: 8
+  y: 12
   flipped: false
   isActive: true
   shift: 0

@@ -48,6 +48,45 @@ def page() -> rx.Component:
                 align="center",
             ),
             rx.hstack(
+                rx.text("Randomize Dots:", weight="bold"),
+                rx.text("Top Mean:"),
+                rx.input(
+                    value=SolverState.randomize_mean_top.to(str),
+                    on_change=SolverState.set_randomize_mean_top,
+                    type="number",
+                    width="4em",
+                ),
+                rx.text("Top Var:"),
+                rx.input(
+                    value=SolverState.randomize_var_top.to(str),
+                    on_change=SolverState.set_randomize_var_top,
+                    type="number",
+                    width="4em",
+                ),
+                rx.text("Side Mean:"),
+                rx.input(
+                    value=SolverState.randomize_mean_side.to(str),
+                    on_change=SolverState.set_randomize_mean_side,
+                    type="number",
+                    width="4em",
+                ),
+                rx.text("Side Var:"),
+                rx.input(
+                    value=SolverState.randomize_var_side.to(str),
+                    on_change=SolverState.set_randomize_var_side,
+                    type="number",
+                    width="4em",
+                ),
+                rx.button(
+                    "Randomize",
+                    on_click=SolverState.randomize_dots,
+                    variant="outline",
+                ),
+                spacing="3",
+                width="100%",
+                align="center",
+            ),
+            rx.hstack(
                 rx.text("Legend:", weight="bold"),
                 rx.foreach(
                     SolverState.piece_legend,
