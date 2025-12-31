@@ -49,11 +49,11 @@ punch_cards:
     y: 13
     flipped: false
     isActive: true
-    shift: 0
+    shift: 22
     word: CHIHUAHUA
   - x: 8
     y: 12
     flipped: false
     isActive: true
-    shift: 0
+    shift: 19
     word: WALROSS
