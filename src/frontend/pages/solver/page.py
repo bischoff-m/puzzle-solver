@@ -38,11 +38,6 @@ def page() -> rx.Component:
                 rx.text("Selected:"),
                 rx.text(SolverState.selected_puzzle),
                 rx.spacer(),
-                rx.checkbox(
-                    "Flip pieces",
-                    checked=SolverState.puzzle_is_flipped,
-                    on_change=SolverState.set_puzzle_is_flipped,
-                ),
                 spacing="3",
                 width="100%",
                 align="center",
@@ -52,14 +47,14 @@ def page() -> rx.Component:
                     rx.text("Randomize Top:", weight="bold"),
                     rx.text("Mean:"),
                     rx.input(
-                        value=SolverState.randomize_mean_top.to(str),
+                        value=SolverState.randomize_mean_top,
                         on_change=SolverState.set_randomize_mean_top,
                         type="number",
                         width="4em",
                     ),
                     rx.text("Var:"),
                     rx.input(
-                        value=SolverState.randomize_var_top.to(str),
+                        value=SolverState.randomize_var_top,
                         on_change=SolverState.set_randomize_var_top,
                         type="number",
                         width="4em",
@@ -76,14 +71,14 @@ def page() -> rx.Component:
                     rx.text("Randomize Side:", weight="bold"),
                     rx.text("Mean:"),
                     rx.input(
-                        value=SolverState.randomize_mean_side.to(str),
+                        value=SolverState.randomize_mean_side,
                         on_change=SolverState.set_randomize_mean_side,
                         type="number",
                         width="4em",
                     ),
                     rx.text("Var:"),
                     rx.input(
-                        value=SolverState.randomize_var_side.to(str),
+                        value=SolverState.randomize_var_side,
                         on_change=SolverState.set_randomize_var_side,
                         type="number",
                         width="4em",
@@ -97,7 +92,7 @@ def page() -> rx.Component:
                     align="center",
                 ),
                 rx.hstack(
-                    rx.text("Rotate Pieces:", weight="bold"),
+                    rx.text("Transform Pieces:", weight="bold"),
                     rx.button(
                         "-90°",
                         on_click=SolverState.rotate_pieces(-1),
@@ -106,6 +101,11 @@ def page() -> rx.Component:
                     rx.button(
                         "+90°",
                         on_click=SolverState.rotate_pieces(1),
+                        variant="outline",
+                    ),
+                    rx.button(
+                        "Flip",
+                        on_click=SolverState.flip_pieces,
                         variant="outline",
                     ),
                     spacing="3",

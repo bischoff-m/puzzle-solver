@@ -2,8 +2,8 @@ import plotly.graph_objects as go
 import reflex as rx
 
 from puzzle_solver.api import (
+    flip_puzzle_pieces,
     get_cube_solution_shift,
-    get_puzzle_is_flipped,
     list_puzzle_assets,
     load_puzzle,
     load_puzzle_with_meta,
@@ -11,9 +11,6 @@ from puzzle_solver.api import (
     randomize_puzzle_top_dots,
     resolve_puzzle_asset,
     rotate_puzzle_pieces,
-)
-from puzzle_solver.api import (
-    set_puzzle_is_flipped as api_set_puzzle_is_flipped,
 )
 from puzzle_solver.cube_solver import solve_cube_pool
 from puzzle_solver.flat_solver import solve_flat_pool
@@ -31,8 +28,6 @@ class SolverState(rx.State):
     puzzles: list[str] = []
     selected_puzzle: str = ""
     max_solutions: int = 50
-
-    puzzle_is_flipped: bool = False
 
     flat_figure_light: go.Figure = go.Figure()
     flat_figure_dark: go.Figure = go.Figure()
@@ -84,23 +79,15 @@ class SolverState(rx.State):
         if not self.selected_puzzle and self.puzzles:
             self.selected_puzzle = self.puzzles[0]
         if self.selected_puzzle:
-            self.puzzle_is_flipped = bool(
-                get_puzzle_is_flipped(self.selected_puzzle)
-            )
-        if self.selected_puzzle:
             yield SolverState.select_puzzle(self.selected_puzzle)
 
     @rx.event
-    def set_puzzle_is_flipped(self, value: bool):
+    def flip_pieces(self):
         try:
-            api_set_puzzle_is_flipped(
-                self.selected_puzzle,
-                is_flipped=bool(value),
-            )
+            path = resolve_puzzle_asset(self.selected_puzzle)
+            flip_puzzle_pieces(path)
         except Exception as e:
-            msg = str(e)
-            self.flat_error = msg
-            self.cube_error = msg
+            self.flat_error = str(e)
             return
         yield SolverState.select_puzzle(self.selected_puzzle)
 
@@ -215,14 +202,12 @@ class SolverState(rx.State):
             board,
             pieces,
             sol,
-            is_flipped=bool(self.puzzle_is_flipped),
             theme="light",
         )
         self.flat_figure_dark = plot_flat_solution(
             board,
             pieces,
             sol,
-            is_flipped=bool(self.puzzle_is_flipped),
             theme="dark",
         )
 
@@ -283,8 +268,7 @@ class SolverState(rx.State):
 
         # Load once for solving/plotting.
         try:
-            board, pieces, is_flipped = load_puzzle_with_meta(path)
-            self.puzzle_is_flipped = bool(is_flipped)
+            board, pieces = load_puzzle_with_meta(path)
             self.piece_names = sorted([p.name for p in pieces])
         except Exception as e:
             msg = str(e)
@@ -343,14 +327,12 @@ class SolverState(rx.State):
                     board,
                     pieces,
                     sol,
-                    is_flipped=bool(self.puzzle_is_flipped),
                     theme="light",
                 )
                 self.flat_figure_dark = plot_flat_solution(
                     board,
                     pieces,
                     sol,
-                    is_flipped=bool(self.puzzle_is_flipped),
                     theme="dark",
                 )
                 # Calculate X and Y

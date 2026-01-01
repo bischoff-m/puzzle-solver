@@ -113,14 +113,12 @@ def flip_piece_border12_reverse_shift(
 
 def load_puzzle_yaml(
     path: str | Path,
-) -> tuple[BoardInput, list[PieceInput], bool]:
+) -> tuple[BoardInput, list[PieceInput]]:
     """Load puzzle input arrays from a YAML file."""
     path = Path(path)
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(raw, dict):
         raise ValueError("YAML root must be a mapping")
-
-    is_flipped = bool(raw.get("isFlipped", False))
 
     board_node = raw.get("board")
     if not isinstance(board_node, dict):
@@ -186,19 +184,16 @@ def load_puzzle_yaml(
     if len(set(names)) != len(names):
         raise ValueError("Piece names must be unique")
 
-    return board, pieces, is_flipped
+    return board, pieces
 
 
 def dump_puzzle_yaml(
     board: BoardInput,
     pieces: list[PieceInput],
-    *,
-    is_flipped: bool = False,
 ) -> str:
     """Construct a YAML document (as string) from the input border arrays."""
     doc = {
         "version": 1,
-        "isFlipped": bool(is_flipped),
         "board": {"border30": list(board.border30)},
         "pieces": [
             {
@@ -218,7 +213,6 @@ def write_puzzle_yaml_from_arrays(
     *,
     board_border30: tuple[bool, ...],
     pieces_border12: dict[str, tuple[bool, ...]],
-    is_flipped: bool = False,
     overwrite: bool = False,
 ) -> None:
     p = Path(path)
@@ -229,7 +223,7 @@ def write_puzzle_yaml_from_arrays(
         PieceInput(name=k, border12=v) for k, v in pieces_border12.items()
     ]
     p.write_text(
-        dump_puzzle_yaml(board, pieces, is_flipped=bool(is_flipped)),
+        dump_puzzle_yaml(board, pieces),
         encoding="utf-8",
     )
 
@@ -237,7 +231,7 @@ def write_puzzle_yaml_from_arrays(
 def flip_puzzle_yaml_pieces_x_inplace(path: str | Path) -> None:
     """Load puzzle YAML, flip each piece grid across the x-axis, write back."""
     path = Path(path)
-    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+    board_input, piece_inputs = load_puzzle_yaml(path)
 
     flipped_inputs: list[PieceInput] = []
     for p in piece_inputs:
@@ -266,7 +260,7 @@ def flip_puzzle_yaml_pieces_x_inplace(path: str | Path) -> None:
         )
 
     path.write_text(
-        dump_puzzle_yaml(board_input, flipped_inputs, is_flipped=is_flipped),
+        dump_puzzle_yaml(board_input, flipped_inputs),
         encoding="utf-8",
     )
 
@@ -277,7 +271,7 @@ def rotate_puzzle_yaml_pieces_inplace(path: str | Path, steps: int = 1) -> None:
     steps=1: +90 (CW), steps=-1: -90 (CCW).
     """
     path = Path(path)
-    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+    board_input, piece_inputs = load_puzzle_yaml(path)
 
     rotated_inputs: list[PieceInput] = []
     for p in piece_inputs:
@@ -304,6 +298,6 @@ def rotate_puzzle_yaml_pieces_inplace(path: str | Path, steps: int = 1) -> None:
         )
 
     path.write_text(
-        dump_puzzle_yaml(board_input, rotated_inputs, is_flipped=is_flipped),
+        dump_puzzle_yaml(board_input, rotated_inputs),
         encoding="utf-8",
     )

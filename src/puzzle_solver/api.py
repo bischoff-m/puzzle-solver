@@ -15,9 +15,7 @@ from .plotting import plot_cube_solution, plot_flat_solution
 from .types import Board, Cell, Face, Piece
 from .yaml_io import (
     dump_puzzle_yaml,
-    flip_border12_reverse_shift,
-    flip_dots16_reverse_shift,
-    flip_piece_border12_reverse_shift,
+    flip_puzzle_yaml_pieces_x_inplace,
     load_puzzle_yaml,
     rotate_puzzle_yaml_pieces_inplace,
 )
@@ -223,16 +221,16 @@ def save_character_table_defaults(
 
 def load_puzzle(path: str | Path = "puzzle.yaml") -> tuple[Board, list[Piece]]:
     """Load a puzzle YAML file and construct the concrete Board/Piece objects."""
-    board, pieces, _is_flipped = load_puzzle_with_meta(path)
+    board, pieces = load_puzzle_with_meta(path)
     return board, pieces
 
 
 def load_puzzle_with_meta(
     path: str | Path = "puzzle.yaml",
-) -> tuple[Board, list[Piece], bool]:
+) -> tuple[Board, list[Piece]]:
     """Load a puzzle and also return its YAML config metadata."""
 
-    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+    board_input, piece_inputs = load_puzzle_yaml(path)
 
     pieces: list[Piece] = []
     for p in piece_inputs:
@@ -241,10 +239,6 @@ def load_puzzle_with_meta(
         dots_side16 = (
             p.dots_side16 if p.dots_side16 is not None else tuple([0] * 16)
         )
-        if bool(is_flipped):
-            border12 = flip_piece_border12_reverse_shift(border12)
-            dots12 = flip_border12_reverse_shift(dots12)
-            dots_side16 = flip_dots16_reverse_shift(dots_side16)
 
         pieces.append(
             Piece(
@@ -256,33 +250,7 @@ def load_puzzle_with_meta(
         )
 
     board = Board(board_grid_from_border30(board_input.border30))
-    return board, pieces, bool(is_flipped)
-
-
-def get_puzzle_is_flipped(name: str) -> bool:
-    p = resolve_puzzle_asset(name)
-    raw = yaml.safe_load(p.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        return False
-    return bool(raw.get("isFlipped", False))
-
-
-def set_puzzle_is_flipped(name: str, *, is_flipped: bool) -> None:
-    p = resolve_puzzle_asset(name)
-    raw = yaml.safe_load(p.read_text(encoding="utf-8"))
-    if not isinstance(raw, dict):
-        raise ValueError("YAML root must be a mapping")
-
-    raw["isFlipped"] = bool(is_flipped)
-
-    data = yaml.safe_dump(
-        raw,
-        sort_keys=False,
-        allow_unicode=True,
-        default_flow_style=False,
-        width=4096,
-    )
-    p.write_text(data, encoding="utf-8")
+    return board, pieces
 
 
 def solve_and_plot_flat(
@@ -293,7 +261,7 @@ def solve_and_plot_flat(
     solution_index: int = 0,
 ) -> tuple[go.Figure, dict[str, dict[Cell, int]]]:
     """Solve the flat puzzle and return (figure, raw_solution)."""
-    board, pieces, is_flipped = load_puzzle_with_meta(path)
+    board, pieces = load_puzzle_with_meta(path)
     sols = solve_flat_pool(
         board, pieces, max_solutions=max_solutions, output_flag=output_flag
     )
@@ -301,7 +269,7 @@ def solve_and_plot_flat(
         raise RuntimeError("No flat solutions returned")
     i = max(0, min(solution_index, len(sols) - 1))
     sol = sols[i]
-    fig = plot_flat_solution(board, pieces, sol, is_flipped=is_flipped)
+    fig = plot_flat_solution(board, pieces, sol)
     return fig, sol
 
 
@@ -350,7 +318,7 @@ def randomize_puzzle_top_dots(path: Path, mean: float, variance: float) -> None:
 
     from .types import PieceInput
 
-    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+    board_input, piece_inputs = load_puzzle_yaml(path)
 
     def sample_rejected(n: int, mean: float, variance: float) -> list[int]:
         std = np.sqrt(max(0, variance))
@@ -375,7 +343,7 @@ def randomize_puzzle_top_dots(path: Path, mean: float, variance: float) -> None:
         )
 
     path.write_text(
-        dump_puzzle_yaml(board_input, new_pieces, is_flipped=is_flipped),
+        dump_puzzle_yaml(board_input, new_pieces),
         encoding="utf-8",
     )
 
@@ -383,6 +351,11 @@ def randomize_puzzle_top_dots(path: Path, mean: float, variance: float) -> None:
 def rotate_puzzle_pieces(path: Path, steps: int) -> None:
     """Rotate all pieces in the puzzle YAML by steps * 90 degrees."""
     rotate_puzzle_yaml_pieces_inplace(path, steps)
+
+
+def flip_puzzle_pieces(path: Path) -> None:
+    """Flip all pieces in the puzzle YAML across the x-axis."""
+    flip_puzzle_yaml_pieces_x_inplace(path)
 
 
 def randomize_puzzle_side_dots(
@@ -393,7 +366,7 @@ def randomize_puzzle_side_dots(
 
     from .types import PieceInput
 
-    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+    board_input, piece_inputs = load_puzzle_yaml(path)
 
     def sample_rejected(n: int, mean: float, variance: float) -> list[int]:
         std = np.sqrt(max(0, variance))
@@ -418,6 +391,6 @@ def randomize_puzzle_side_dots(
         )
 
     path.write_text(
-        dump_puzzle_yaml(board_input, new_pieces, is_flipped=is_flipped),
+        dump_puzzle_yaml(board_input, new_pieces),
         encoding="utf-8",
     )
