@@ -234,7 +234,7 @@ def build_character_mapping_figure(
                         y=r,
                         text=value,
                         showarrow=False,
-                        font=dict(size=14, color=text_color),
+                        font=dict(size=14, color=text_color, family="Poppins"),
                     )
                 )
         z.append(z_row)
@@ -310,6 +310,7 @@ def build_character_mapping_figure(
         shapes=shapes,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor=grid_bg,
+        font=dict(family="Poppins"),
     )
     fig.update_xaxes(
         showticklabels=False,
@@ -448,7 +449,7 @@ def build_character_table_figure(
                         y=row,
                         text=v,
                         showarrow=False,
-                        font=dict(size=14, color="black"),
+                        font=dict(size=14, color="black", family="Poppins"),
                     )
                 )
 
@@ -514,6 +515,7 @@ def build_character_table_figure(
         height=fig_height,
         annotations=annotations,
         shapes=shapes,
+        font=dict(family="Poppins"),
     )
     fig.update_xaxes(
         showticklabels=False,
