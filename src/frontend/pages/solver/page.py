@@ -145,6 +145,16 @@ def page() -> rx.Component:
                     use_resize_handler=True,
                 ),
             ),
+            rx.color_mode_cond(
+                rx.plotly(
+                    data=SolverState.flat_piece_sides_figure_light,
+                    use_resize_handler=True,
+                ),
+                rx.plotly(
+                    data=SolverState.flat_piece_sides_figure_dark,
+                    use_resize_handler=True,
+                ),
+            ),
             rx.divider(),
             rx.heading("Flat", size="5"),
             rx.hstack(

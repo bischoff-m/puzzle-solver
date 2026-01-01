@@ -4,7 +4,12 @@ import numpy as np
 import plotly.graph_objects as go
 
 from .cube_solver import _enumerate_cube_placements
-from .grids import _PIECE_BORDER_COORDS_4X4, grid_to_cells, rotate_grid
+from .grids import (
+    _PIECE_BORDER_COORDS_4X4,
+    grid_to_cells,
+    rotate_grid,
+    rotate_side_grid,
+)
 from .types import Board, Cell, Face, Piece, Voxel
 
 
@@ -363,6 +368,112 @@ def plot_pieces_row(
         scaleanchor="x",
         autorange="reversed",
         constrain="domain",
+    )
+    return fig
+
+
+def plot_piece_rotations_sides(
+    pieces: list[Piece], *, margin: int = 1, theme: str = "light"
+) -> go.Figure:
+    """Plot all pieces and their 4 rotations, showing only the first side row.
+
+    The "first row" is the North side strip (4 cells). One row is shown per
+    rotation (k=0..3). Pieces are laid out horizontally.
+    """
+    margin = max(0, int(margin))
+    if not pieces:
+        return go.Figure()
+
+    pieces_sorted = sorted(pieces, key=lambda p: p.name)
+    n_pieces = len(pieces_sorted)
+
+    # Keep only the first row (North strip), one row per rotation,
+    # with blank separator rows between rotations.
+    rot_gap = 1
+    h = 4 + 3 * rot_gap
+    w_block = 4
+    w = n_pieces * w_block + (n_pieces - 1) * margin
+
+    grid_int = np.zeros((h, w), dtype=int)
+    dot_xs, dot_ys = [], []
+
+    for i, p in enumerate(pieces_sorted):
+        x0 = i * (w_block + margin)
+        for k in range(4):  # 4 rotations -> 4 output rows
+            y0 = k * (1 + rot_gap)
+
+            # Rotate grid and side dots
+            rotated_grid = rotate_grid(p.grid, k)
+            if p.dots_side_grid:
+                rotated_side_grid = rotate_side_grid(p.dots_side_grid, k)
+            else:
+                rotated_side_grid = [[(0, 0, 0, 0)] * 4 for _ in range(4)]
+
+            # North strip only: y=0, x=0..3, side_idx=0
+            for cell_idx in range(4):
+                present = rotated_grid[0][cell_idx]
+                dots = rotated_side_grid[0][cell_idx][0]
+                if not present:
+                    continue
+                x = x0 + (3 - cell_idx)
+                grid_int[y0, x] = i + 1
+                if 1 <= dots <= 6:
+                    for dx, dy in _get_dot_offsets(dots):
+                        dot_xs.append(x + dx)
+                        dot_ys.append(y0 + dy)
+
+    t = _character_mapping_theme(theme)
+    palette = qualitative_palette(max(6, n_pieces))[:n_pieces]
+    colors = [t["cell_bg"], *palette]
+    colorscale = _discrete_colorscale(colors)
+
+    data: list[object] = [
+        go.Heatmap(
+            z=grid_int,
+            zmin=0,
+            zmax=n_pieces,
+            colorscale=colorscale,
+            showscale=False,
+            hoverinfo="skip",
+            xgap=1,
+            ygap=1,
+        )
+    ]
+
+    if dot_xs:
+        data.append(
+            go.Scatter(
+                x=dot_xs,
+                y=dot_ys,
+                mode="markers",
+                marker=dict(size=5, color="black", line=dict(width=0)),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
+
+    fig = go.Figure(data=data)
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=220,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=t["text_color"]),
+    )
+    fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
+    fig.update_yaxes(
+        showticklabels=True,
+        showgrid=False,
+        zeroline=False,
+        scaleanchor="x",
+        autorange="reversed",
+        constrain="domain",
+        tickmode="array",
+        tickvals=[k * (1 + rot_gap) for k in range(4)],
+        ticktext=["↑", "→", "↓", "←"],
+        tickfont=dict(size=20),
+        ticklabelstandoff=0,
+        ticks="",
     )
     return fig
 

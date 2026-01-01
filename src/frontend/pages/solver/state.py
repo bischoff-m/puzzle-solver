@@ -18,6 +18,7 @@ from puzzle_solver.plotting import (
     plot_cube_solution,
     plot_flat_board,
     plot_flat_solution,
+    plot_piece_rotations_sides,
     plot_pieces_row,
     qualitative_palette,
 )
@@ -37,6 +38,8 @@ class SolverState(rx.State):
     flat_board_figure_dark: go.Figure = go.Figure()
     flat_pieces_figure_light: go.Figure = go.Figure()
     flat_pieces_figure_dark: go.Figure = go.Figure()
+    flat_piece_sides_figure_light: go.Figure = go.Figure()
+    flat_piece_sides_figure_dark: go.Figure = go.Figure()
 
     flat_solutions: list[dict[str, list[list[int]]]] = []
     cube_solutions: list[dict[str, list[object]]] = []
@@ -287,6 +290,8 @@ class SolverState(rx.State):
             self.flat_board_figure_dark = go.Figure()
             self.flat_pieces_figure_light = go.Figure()
             self.flat_pieces_figure_dark = go.Figure()
+            self.flat_piece_sides_figure_light = go.Figure()
+            self.flat_piece_sides_figure_dark = go.Figure()
             self.solving_flat = False
             self.solving_cube = False
             return
@@ -298,6 +303,12 @@ class SolverState(rx.State):
             pieces, margin=1, theme="light"
         )
         self.flat_pieces_figure_dark = plot_pieces_row(
+            pieces, margin=1, theme="dark"
+        )
+        self.flat_piece_sides_figure_light = plot_piece_rotations_sides(
+            pieces, margin=1, theme="light"
+        )
+        self.flat_piece_sides_figure_dark = plot_piece_rotations_sides(
             pieces, margin=1, theme="dark"
         )
 
