@@ -269,3 +269,41 @@ def flip_puzzle_yaml_pieces_x_inplace(path: str | Path) -> None:
         dump_puzzle_yaml(board_input, flipped_inputs, is_flipped=is_flipped),
         encoding="utf-8",
     )
+
+
+def rotate_puzzle_yaml_pieces_inplace(path: str | Path, steps: int = 1) -> None:
+    """Rotate each piece by steps * 90 degrees and write back.
+
+    steps=1: +90 (CW), steps=-1: -90 (CCW).
+    """
+    path = Path(path)
+    board_input, piece_inputs, is_flipped = load_puzzle_yaml(path)
+
+    rotated_inputs: list[PieceInput] = []
+    for p in piece_inputs:
+        # border12 and dotsTop (12 elements) -> shift by 3 * steps
+        s12 = (3 * steps) % 12
+        b12 = list(p.border12)
+        b12 = b12[-s12:] + b12[:-s12]
+
+        d12 = list(p.dots) if p.dots is not None else [0] * 12
+        d12 = d12[-s12:] + d12[:-s12]
+
+        # dotsSide (16 elements) -> shift by 4 * steps
+        s16 = (4 * steps) % 16
+        d16 = list(p.dots_side16) if p.dots_side16 is not None else [0] * 16
+        d16 = d16[-s16:] + d16[:-s16]
+
+        rotated_inputs.append(
+            PieceInput(
+                name=p.name,
+                border12=tuple(b12),
+                dots=tuple(d12),
+                dots_side16=tuple(d16),
+            )
+        )
+
+    path.write_text(
+        dump_puzzle_yaml(board_input, rotated_inputs, is_flipped=is_flipped),
+        encoding="utf-8",
+    )

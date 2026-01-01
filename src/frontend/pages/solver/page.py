@@ -96,6 +96,21 @@ def page() -> rx.Component:
                     spacing="3",
                     align="center",
                 ),
+                rx.hstack(
+                    rx.text("Rotate Pieces:", weight="bold"),
+                    rx.button(
+                        "-90°",
+                        on_click=SolverState.rotate_pieces(-1),
+                        variant="outline",
+                    ),
+                    rx.button(
+                        "+90°",
+                        on_click=SolverState.rotate_pieces(1),
+                        variant="outline",
+                    ),
+                    spacing="3",
+                    align="center",
+                ),
                 width="100%",
                 align="start",
                 spacing="2",

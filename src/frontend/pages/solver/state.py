@@ -10,6 +10,7 @@ from puzzle_solver.api import (
     randomize_puzzle_side_dots,
     randomize_puzzle_top_dots,
     resolve_puzzle_asset,
+    rotate_puzzle_pieces,
 )
 from puzzle_solver.api import (
     set_puzzle_is_flipped as api_set_puzzle_is_flipped,
@@ -129,6 +130,16 @@ class SolverState(rx.State):
             self.randomize_var_side = float(value)
         except (ValueError, TypeError):
             pass
+
+    @rx.event
+    def rotate_pieces(self, steps: int):
+        try:
+            path = resolve_puzzle_asset(self.selected_puzzle)
+            rotate_puzzle_pieces(path, steps)
+        except Exception as e:
+            self.flat_error = str(e)
+            return
+        yield SolverState.select_puzzle(self.selected_puzzle)
 
     def _flat_sol_from_json(
         self, sol: dict[str, list[list[int]]]

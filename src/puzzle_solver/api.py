@@ -19,6 +19,7 @@ from .yaml_io import (
     flip_dots16_reverse_shift,
     flip_piece_border12_reverse_shift,
     load_puzzle_yaml,
+    rotate_puzzle_yaml_pieces_inplace,
 )
 
 
@@ -377,6 +378,11 @@ def randomize_puzzle_top_dots(path: Path, mean: float, variance: float) -> None:
         dump_puzzle_yaml(board_input, new_pieces, is_flipped=is_flipped),
         encoding="utf-8",
     )
+
+
+def rotate_puzzle_pieces(path: Path, steps: int) -> None:
+    """Rotate all pieces in the puzzle YAML by steps * 90 degrees."""
+    rotate_puzzle_yaml_pieces_inplace(path, steps)
 
 
 def randomize_puzzle_side_dots(
