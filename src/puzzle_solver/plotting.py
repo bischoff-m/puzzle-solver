@@ -435,10 +435,39 @@ def plot_piece_rotations_sides(
             colorscale=colorscale,
             showscale=False,
             hoverinfo="skip",
-            xgap=1,
-            ygap=1,
+            xgap=0,
+            ygap=0,
         )
     ]
+
+    # Draw grid lines for each 4x1 strip cell (including z=0), but do not draw
+    # any lines in separator rows or the margin columns between pieces.
+    line_xs: list[float | None] = []
+    line_ys: list[float | None] = []
+    for k in range(4):
+        yy = k * (1 + rot_gap)
+        for i in range(n_pieces):
+            x0_piece = i * (w_block + margin)
+            for xx in range(x0_piece, x0_piece + w_block):
+                x0 = xx - 0.5
+                x1 = xx + 0.5
+                y0 = yy - 0.5
+                y1 = yy + 0.5
+                line_xs.extend([x0, x1, x1, x0, x0, None])
+                line_ys.extend([y0, y0, y1, y1, y0, None])
+
+    if line_xs:
+        line_color = t["grid_bg"]
+        data.append(
+            go.Scatter(
+                x=line_xs,
+                y=line_ys,
+                mode="lines",
+                line=dict(color=line_color, width=1),
+                showlegend=False,
+                hoverinfo="skip",
+            )
+        )
 
     if dot_xs:
         data.append(

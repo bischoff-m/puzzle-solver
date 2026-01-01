@@ -4,268 +4,286 @@ from .state import SolverState
 
 
 def page() -> rx.Component:
-    return rx.container(
-        rx.color_mode.button(position="top-right"),
-        rx.vstack(
-            rx.heading("Puzzle Solver", size="7"),
-            rx.text("Solve and visualize the flat and cube solutions."),
-            rx.text("Puzzles:"),
-            rx.flex(
-                rx.foreach(
-                    SolverState.puzzles,
-                    lambda p: rx.button(
-                        p.replace(".yaml", "").replace("-", " ").title(),
-                        on_click=SolverState.select_puzzle(p),
-                        variant=rx.cond(
-                            SolverState.selected_puzzle == p,
-                            "solid",
-                            "outline",
-                        ),
+    left = rx.vstack(
+        rx.heading("Puzzle Solver", size="7"),
+        rx.text("Solve and visualize the flat and cube solutions."),
+        rx.text("Puzzles:"),
+        rx.flex(
+            rx.foreach(
+                SolverState.puzzles,
+                lambda p: rx.button(
+                    p.replace(".yaml", "").replace("-", " ").title(),
+                    on_click=SolverState.select_puzzle(p),
+                    variant=rx.cond(
+                        SolverState.selected_puzzle == p,
+                        "solid",
+                        "outline",
                     ),
-                ),
-                wrap="wrap",
-                gap="0.5em",
-                width="100%",
-            ),
-            rx.hstack(
-                rx.button(
-                    "Solve",
-                    on_click=SolverState.select_puzzle(
-                        SolverState.selected_puzzle
-                    ),
-                    loading=SolverState.solving_flat | SolverState.solving_cube,
-                ),
-                rx.text("Selected:"),
-                rx.text(SolverState.selected_puzzle),
-                rx.spacer(),
-                spacing="3",
-                width="100%",
-                align="center",
-            ),
-            rx.vstack(
-                rx.hstack(
-                    rx.text("Randomize Top:", weight="bold"),
-                    rx.text("Mean:"),
-                    rx.input(
-                        value=SolverState.randomize_mean_top,
-                        on_change=SolverState.set_randomize_mean_top,
-                        type="number",
-                        width="4em",
-                    ),
-                    rx.text("Var:"),
-                    rx.input(
-                        value=SolverState.randomize_var_top,
-                        on_change=SolverState.set_randomize_var_top,
-                        type="number",
-                        width="4em",
-                    ),
-                    rx.button(
-                        "Randomize Top",
-                        on_click=SolverState.randomize_top_dots,
-                        variant="outline",
-                    ),
-                    spacing="3",
-                    align="center",
-                ),
-                rx.hstack(
-                    rx.text("Randomize Side:", weight="bold"),
-                    rx.text("Mean:"),
-                    rx.input(
-                        value=SolverState.randomize_mean_side,
-                        on_change=SolverState.set_randomize_mean_side,
-                        type="number",
-                        width="4em",
-                    ),
-                    rx.text("Var:"),
-                    rx.input(
-                        value=SolverState.randomize_var_side,
-                        on_change=SolverState.set_randomize_var_side,
-                        type="number",
-                        width="4em",
-                    ),
-                    rx.button(
-                        "Randomize Side",
-                        on_click=SolverState.randomize_side_dots,
-                        variant="outline",
-                    ),
-                    spacing="3",
-                    align="center",
-                ),
-                rx.hstack(
-                    rx.text("Transform Pieces:", weight="bold"),
-                    rx.button(
-                        "-90°",
-                        on_click=SolverState.rotate_pieces(-1),
-                        variant="outline",
-                    ),
-                    rx.button(
-                        "+90°",
-                        on_click=SolverState.rotate_pieces(1),
-                        variant="outline",
-                    ),
-                    rx.button(
-                        "Flip",
-                        on_click=SolverState.flip_pieces,
-                        variant="outline",
-                    ),
-                    spacing="3",
-                    align="center",
-                ),
-                width="100%",
-                align="start",
-                spacing="2",
-            ),
-            rx.hstack(
-                rx.text("Legend:", weight="bold"),
-                rx.foreach(
-                    SolverState.piece_legend,
-                    lambda item: rx.hstack(
-                        rx.box(
-                            width="1em",
-                            height="1em",
-                            background_color=item["color"],
-                            border_radius="2px",
-                        ),
-                        rx.text(item["name"]),
-                        align="center",
-                        spacing="1",
-                    ),
-                ),
-                spacing="4",
-                wrap="wrap",
-                width="100%",
-            ),
-            rx.color_mode_cond(
-                rx.plotly(
-                    data=SolverState.flat_pieces_figure_light,
-                    use_resize_handler=True,
-                ),
-                rx.plotly(
-                    data=SolverState.flat_pieces_figure_dark,
-                    use_resize_handler=True,
                 ),
             ),
-            rx.color_mode_cond(
-                rx.plotly(
-                    data=SolverState.flat_piece_sides_figure_light,
-                    use_resize_handler=True,
-                ),
-                rx.plotly(
-                    data=SolverState.flat_piece_sides_figure_dark,
-                    use_resize_handler=True,
-                ),
-            ),
-            rx.divider(),
-            rx.heading("Flat", size="5"),
-            rx.hstack(
-                rx.text("Solutions:"),
-                rx.text(SolverState.flat_solution_count),
-                rx.spacer(),
-                rx.text("X:"),
-                rx.text(SolverState.flat_x),
-                rx.text("Y:"),
-                rx.text(SolverState.flat_y),
-                rx.spacer(),
-                rx.button(
-                    "Prev",
-                    on_click=SolverState.prev_flat_solution,
-                    is_disabled=(SolverState.flat_solution_count <= 1)
-                    | (SolverState.flat_solution_index <= 0),
-                ),
-                rx.text("#"),
-                rx.text(SolverState.flat_solution_index + 1),
-                rx.button(
-                    "Next",
-                    on_click=SolverState.next_flat_solution,
-                    is_disabled=(SolverState.flat_solution_count <= 1)
-                    | (
-                        SolverState.flat_solution_index
-                        >= (SolverState.flat_solution_count - 1)
-                    ),
-                ),
-                width="100%",
-            ),
-            rx.vstack(
-                rx.cond(
-                    SolverState.flat_solution_count > 0,
-                    rx.color_mode_cond(
-                        rx.plotly(
-                            data=SolverState.flat_figure_light,
-                            use_resize_handler=True,
-                        ),
-                        rx.plotly(
-                            data=SolverState.flat_figure_dark,
-                            use_resize_handler=True,
-                        ),
-                    ),
-                    rx.vstack(
-                        rx.cond(
-                            SolverState.flat_error != "",
-                            rx.text(SolverState.flat_error),
-                        ),
-                        rx.color_mode_cond(
-                            rx.plotly(
-                                data=SolverState.flat_board_figure_light,
-                                use_resize_handler=True,
-                            ),
-                            rx.plotly(
-                                data=SolverState.flat_board_figure_dark,
-                                use_resize_handler=True,
-                            ),
-                        ),
-                        width="100%",
-                    ),
-                ),
-                spacing="3",
-                width="100%",
-            ),
-            rx.divider(),
-            rx.heading("Cube", size="5"),
-            rx.hstack(
-                rx.text("Solutions:"),
-                rx.text(SolverState.cube_solution_count),
-                rx.spacer(),
-                rx.text("Shift:"),
-                rx.text(SolverState.cube_shift),
-                rx.spacer(),
-                rx.button(
-                    "Prev",
-                    on_click=SolverState.prev_cube_solution,
-                    is_disabled=(SolverState.cube_solution_count <= 1)
-                    | (SolverState.cube_solution_index <= 0),
-                ),
-                rx.text("#"),
-                rx.text(SolverState.cube_solution_index + 1),
-                rx.button(
-                    "Next",
-                    on_click=SolverState.next_cube_solution,
-                    is_disabled=(SolverState.cube_solution_count <= 1)
-                    | (
-                        SolverState.cube_solution_index
-                        >= (SolverState.cube_solution_count - 1)
-                    ),
-                ),
-                width="100%",
-            ),
-            rx.vstack(
-                rx.cond(
-                    SolverState.cube_solution_count > 0,
-                    rx.plotly(
-                        data=SolverState.cube_figure, use_resize_handler=True
-                    ),
-                    rx.cond(
-                        SolverState.cube_error != "",
-                        rx.text(SolverState.cube_error),
-                    ),
-                ),
-                spacing="3",
-                width="100%",
-            ),
-            spacing="4",
+            wrap="wrap",
+            gap="0.5em",
             width="100%",
         ),
+        rx.hstack(
+            rx.button(
+                "Solve",
+                on_click=SolverState.select_puzzle(SolverState.selected_puzzle),
+                loading=SolverState.solving_flat | SolverState.solving_cube,
+            ),
+            rx.text("Selected:"),
+            rx.text(SolverState.selected_puzzle),
+            rx.spacer(),
+            spacing="3",
+            width="100%",
+            align="center",
+        ),
+        rx.vstack(
+            rx.hstack(
+                rx.text("Randomize Top:", weight="bold"),
+                rx.text("Mean:"),
+                rx.input(
+                    value=SolverState.randomize_mean_top,
+                    on_change=SolverState.set_randomize_mean_top,
+                    type="number",
+                    width="4em",
+                ),
+                rx.text("Var:"),
+                rx.input(
+                    value=SolverState.randomize_var_top,
+                    on_change=SolverState.set_randomize_var_top,
+                    type="number",
+                    width="4em",
+                ),
+                rx.button(
+                    "Randomize Top",
+                    on_click=SolverState.randomize_top_dots,
+                    variant="outline",
+                ),
+                spacing="3",
+                align="center",
+            ),
+            rx.hstack(
+                rx.text("Randomize Side:", weight="bold"),
+                rx.text("Mean:"),
+                rx.input(
+                    value=SolverState.randomize_mean_side,
+                    on_change=SolverState.set_randomize_mean_side,
+                    type="number",
+                    width="4em",
+                ),
+                rx.text("Var:"),
+                rx.input(
+                    value=SolverState.randomize_var_side,
+                    on_change=SolverState.set_randomize_var_side,
+                    type="number",
+                    width="4em",
+                ),
+                rx.button(
+                    "Randomize Side",
+                    on_click=SolverState.randomize_side_dots,
+                    variant="outline",
+                ),
+                spacing="3",
+                align="center",
+            ),
+            rx.hstack(
+                rx.text("Transform Pieces:", weight="bold"),
+                rx.button(
+                    "-90°",
+                    on_click=SolverState.rotate_pieces(-1),
+                    variant="outline",
+                ),
+                rx.button(
+                    "+90°",
+                    on_click=SolverState.rotate_pieces(1),
+                    variant="outline",
+                ),
+                rx.button(
+                    "Flip",
+                    on_click=SolverState.flip_pieces,
+                    variant="outline",
+                ),
+                spacing="3",
+                align="center",
+            ),
+            width="100%",
+            align="start",
+            spacing="2",
+        ),
+        rx.hstack(
+            rx.text("Legend:", weight="bold"),
+            rx.foreach(
+                SolverState.piece_legend,
+                lambda item: rx.hstack(
+                    rx.box(
+                        width="1em",
+                        height="1em",
+                        background_color=item["color"],
+                        border_radius="2px",
+                    ),
+                    rx.text(item["name"]),
+                    align="center",
+                    spacing="1",
+                ),
+            ),
+            spacing="4",
+            wrap="wrap",
+            width="100%",
+        ),
+        rx.color_mode_cond(
+            rx.plotly(
+                data=SolverState.flat_pieces_figure_light,
+                use_resize_handler=True,
+            ),
+            rx.plotly(
+                data=SolverState.flat_pieces_figure_dark,
+                use_resize_handler=True,
+            ),
+        ),
+        rx.color_mode_cond(
+            rx.plotly(
+                data=SolverState.flat_piece_sides_figure_light,
+                use_resize_handler=True,
+            ),
+            rx.plotly(
+                data=SolverState.flat_piece_sides_figure_dark,
+                use_resize_handler=True,
+            ),
+        ),
+        spacing="4",
         width="100%",
-        max_width="1100px",
-        margin_x="auto",
-        padding_y="2em",
+        align="start",
+    )
+
+    right = rx.vstack(
+        rx.heading("Flat", size="5"),
+        rx.hstack(
+            rx.text("Solutions:"),
+            rx.text(SolverState.flat_solution_count),
+            rx.spacer(),
+            rx.text("X:"),
+            rx.text(SolverState.flat_x),
+            rx.text("Y:"),
+            rx.text(SolverState.flat_y),
+            rx.spacer(),
+            rx.button(
+                "Prev",
+                on_click=SolverState.prev_flat_solution,
+                is_disabled=(SolverState.flat_solution_count <= 1)
+                | (SolverState.flat_solution_index <= 0),
+            ),
+            rx.text("#"),
+            rx.text(SolverState.flat_solution_index + 1),
+            rx.button(
+                "Next",
+                on_click=SolverState.next_flat_solution,
+                is_disabled=(SolverState.flat_solution_count <= 1)
+                | (
+                    SolverState.flat_solution_index
+                    >= (SolverState.flat_solution_count - 1)
+                ),
+            ),
+            width="100%",
+        ),
+        rx.vstack(
+            rx.cond(
+                SolverState.flat_solution_count > 0,
+                rx.color_mode_cond(
+                    rx.plotly(
+                        data=SolverState.flat_figure_light,
+                        use_resize_handler=True,
+                    ),
+                    rx.plotly(
+                        data=SolverState.flat_figure_dark,
+                        use_resize_handler=True,
+                    ),
+                ),
+                rx.vstack(
+                    rx.cond(
+                        SolverState.flat_error != "",
+                        rx.text(SolverState.flat_error),
+                    ),
+                    rx.color_mode_cond(
+                        rx.plotly(
+                            data=SolverState.flat_board_figure_light,
+                            use_resize_handler=True,
+                        ),
+                        rx.plotly(
+                            data=SolverState.flat_board_figure_dark,
+                            use_resize_handler=True,
+                        ),
+                    ),
+                    width="100%",
+                ),
+            ),
+            spacing="3",
+            width="100%",
+        ),
+        rx.divider(),
+        rx.heading("Cube", size="5"),
+        rx.hstack(
+            rx.text("Solutions:"),
+            rx.text(SolverState.cube_solution_count),
+            rx.spacer(),
+            rx.text("Shift:"),
+            rx.text(SolverState.cube_shift),
+            rx.spacer(),
+            rx.button(
+                "Prev",
+                on_click=SolverState.prev_cube_solution,
+                is_disabled=(SolverState.cube_solution_count <= 1)
+                | (SolverState.cube_solution_index <= 0),
+            ),
+            rx.text("#"),
+            rx.text(SolverState.cube_solution_index + 1),
+            rx.button(
+                "Next",
+                on_click=SolverState.next_cube_solution,
+                is_disabled=(SolverState.cube_solution_count <= 1)
+                | (
+                    SolverState.cube_solution_index
+                    >= (SolverState.cube_solution_count - 1)
+                ),
+            ),
+            width="100%",
+        ),
+        rx.vstack(
+            rx.cond(
+                SolverState.cube_solution_count > 0,
+                rx.plotly(
+                    data=SolverState.cube_figure, use_resize_handler=True
+                ),
+                rx.cond(
+                    SolverState.cube_error != "",
+                    rx.text(SolverState.cube_error),
+                ),
+            ),
+            spacing="3",
+            width="100%",
+        ),
+        spacing="4",
+        width="100%",
+        align="start",
+    )
+
+    return rx.box(
+        rx.color_mode.button(position="top-right"),
+        rx.flex(
+            rx.flex(
+                rx.box(left, min_width="520px"),
+                rx.box(right, min_width="520px"),
+                width="100%",
+                align="start",
+                justify="center",
+                gap="6em",
+                wrap="wrap",
+            ),
+            width="100%",
+            justify="center",
+        ),
+        width="100%",
+        padding_y="3em",
+        padding_x="clamp(1em, 4vw, 3em)",
+        margin="0",
     )
