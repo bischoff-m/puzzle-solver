@@ -113,8 +113,8 @@ def plot_flat_solution(
         # Find the Piece object to account for rotation
         p_obj = next((p for p in pieces if p.name == name), None)
         ox, oy, rot = 0, 0, 0
+        found = False
         if p_obj:
-            found = False
             cells_set = set(occ.keys())
             min_x = min(c[0] for c in cells_set)
             max_x = max(c[0] for c in cells_set)
@@ -339,7 +339,7 @@ def plot_pieces_row(
                 x=dot_xs,
                 y=dot_ys,
                 mode="markers",
-                marker=dict(size=8, color="black", line=dict(width=0)),
+                marker=dict(size=4, color="black", line=dict(width=0)),
                 showlegend=False,
                 hoverinfo="skip",
             )
@@ -349,7 +349,7 @@ def plot_pieces_row(
     fig.update_layout(
         title="Pieces",
         margin=dict(l=10, r=10, t=50, b=10),
-        height=260,
+        height=400,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor=t["grid_bg"],
         font=dict(color=t["text_color"]),
