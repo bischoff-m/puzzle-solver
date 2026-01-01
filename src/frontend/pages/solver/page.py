@@ -135,6 +135,16 @@ def page() -> rx.Component:
                 wrap="wrap",
                 width="100%",
             ),
+            rx.color_mode_cond(
+                rx.plotly(
+                    data=SolverState.flat_pieces_figure_light,
+                    use_resize_handler=True,
+                ),
+                rx.plotly(
+                    data=SolverState.flat_pieces_figure_dark,
+                    use_resize_handler=True,
+                ),
+            ),
             rx.divider(),
             rx.heading("Flat", size="5"),
             rx.hstack(
@@ -168,8 +178,15 @@ def page() -> rx.Component:
             rx.vstack(
                 rx.cond(
                     SolverState.flat_solution_count > 0,
-                    rx.plotly(
-                        data=SolverState.flat_figure, use_resize_handler=True
+                    rx.color_mode_cond(
+                        rx.plotly(
+                            data=SolverState.flat_figure_light,
+                            use_resize_handler=True,
+                        ),
+                        rx.plotly(
+                            data=SolverState.flat_figure_dark,
+                            use_resize_handler=True,
+                        ),
                     ),
                     rx.vstack(
                         rx.cond(
@@ -187,16 +204,6 @@ def page() -> rx.Component:
                             ),
                         ),
                         width="100%",
-                    ),
-                ),
-                rx.color_mode_cond(
-                    rx.plotly(
-                        data=SolverState.flat_pieces_figure_light,
-                        use_resize_handler=True,
-                    ),
-                    rx.plotly(
-                        data=SolverState.flat_pieces_figure_dark,
-                        use_resize_handler=True,
                     ),
                 ),
                 spacing="3",
@@ -239,16 +246,6 @@ def page() -> rx.Component:
                     rx.cond(
                         SolverState.cube_error != "",
                         rx.text(SolverState.cube_error),
-                    ),
-                ),
-                rx.color_mode_cond(
-                    rx.plotly(
-                        data=SolverState.flat_pieces_figure_light,
-                        use_resize_handler=True,
-                    ),
-                    rx.plotly(
-                        data=SolverState.flat_pieces_figure_dark,
-                        use_resize_handler=True,
                     ),
                 ),
                 spacing="3",

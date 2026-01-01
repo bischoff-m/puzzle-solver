@@ -89,6 +89,7 @@ def plot_flat_solution(
     solution: dict[str, dict[Cell, int]],
     *,
     is_flipped: bool = False,
+    theme: str = "light",
 ) -> go.Figure:
     """Return a Plotly figure for the flat-board solution."""
     board_filled = grid_to_cells(board.grid)
@@ -179,7 +180,8 @@ def plot_flat_solution(
     piece_colors = qualitative_palette(max(6, len(piece_items)))[
         : len(piece_items)
     ]
-    colors = ["#ffffff", *piece_colors, "#c0c0c0"]
+    t = _character_mapping_theme(theme)
+    colors = ["#ffffff", *piece_colors, t["cell_bg"]]
     colorscale = _discrete_colorscale(colors)
 
     data: list[object] = [
@@ -211,9 +213,10 @@ def plot_flat_solution(
     fig = go.Figure(data=data)
 
     fig.update_layout(
-        title="Flat solution",
-        margin=dict(l=10, r=10, t=50, b=10),
+        margin=dict(l=0, r=0, t=0, b=0),
         height=450,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
     fig.update_xaxes(
         showticklabels=False,
@@ -259,11 +262,10 @@ def plot_flat_board(board: Board, *, theme: str = "light") -> go.Figure:
         ]
     )
     fig.update_layout(
-        title="Board",
-        margin=dict(l=10, r=10, t=50, b=10),
+        margin=dict(l=0, r=0, t=0, b=0),
         height=350,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor=t["grid_bg"],
+        plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=t["text_color"]),
     )
     fig.update_xaxes(
@@ -347,11 +349,10 @@ def plot_pieces_row(
 
     fig = go.Figure(data=data)
     fig.update_layout(
-        title="Pieces",
-        margin=dict(l=10, r=10, t=50, b=10),
-        height=400,
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=140,
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor=t["grid_bg"],
+        plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color=t["text_color"]),
     )
     fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
@@ -361,6 +362,7 @@ def plot_pieces_row(
         zeroline=False,
         scaleanchor="x",
         autorange="reversed",
+        constrain="domain",
     )
     return fig
 
@@ -553,9 +555,9 @@ def plot_cube_solution(
     fig = go.Figure(data=data)
 
     fig.update_layout(
-        title="Cube solution",
-        margin=dict(l=10, r=10, t=50, b=10),
+        margin=dict(l=0, r=0, t=0, b=0),
         height=600,
+        paper_bgcolor="rgba(0,0,0,0)",
         scene=dict(
             xaxis=dict(range=[-0.25, 4.25], dtick=1, title="x"),
             yaxis=dict(range=[-0.25, 4.25], dtick=1, title="y"),
@@ -590,9 +592,10 @@ def plot_grids(grids: Iterable[tuple[str, list[list[bool]]]]) -> go.Figure:
         ]
     )
     fig.update_layout(
-        title=title,
-        margin=dict(l=10, r=10, t=50, b=10),
+        margin=dict(l=0, r=0, t=0, b=0),
         height=320,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
     )
     fig.update_xaxes(showticklabels=False, showgrid=False, zeroline=False)
     fig.update_yaxes(

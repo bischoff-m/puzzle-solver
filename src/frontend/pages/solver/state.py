@@ -34,7 +34,8 @@ class SolverState(rx.State):
 
     puzzle_is_flipped: bool = False
 
-    flat_figure: go.Figure = go.Figure()
+    flat_figure_light: go.Figure = go.Figure()
+    flat_figure_dark: go.Figure = go.Figure()
     cube_figure: go.Figure = go.Figure()
 
     flat_board_figure_light: go.Figure = go.Figure()
@@ -198,7 +199,8 @@ class SolverState(rx.State):
 
     def _replot_flat(self) -> None:
         if self.flat_solution_count <= 0:
-            self.flat_figure = go.Figure()
+            self.flat_figure_light = go.Figure()
+            self.flat_figure_dark = go.Figure()
             self.flat_x = 0
             self.flat_y = 0
             return
@@ -209,8 +211,19 @@ class SolverState(rx.State):
         path = resolve_puzzle_asset(self.selected_puzzle)
         board, pieces = load_puzzle(path)
         sol = self._flat_sol_from_json(self.flat_solutions[i])
-        self.flat_figure = plot_flat_solution(
-            board, pieces, sol, is_flipped=bool(self.puzzle_is_flipped)
+        self.flat_figure_light = plot_flat_solution(
+            board,
+            pieces,
+            sol,
+            is_flipped=bool(self.puzzle_is_flipped),
+            theme="light",
+        )
+        self.flat_figure_dark = plot_flat_solution(
+            board,
+            pieces,
+            sol,
+            is_flipped=bool(self.puzzle_is_flipped),
+            theme="dark",
         )
 
         # Calculate X and Y
@@ -261,7 +274,8 @@ class SolverState(rx.State):
             self.cube_solution_count = 0
             self.flat_solution_index = 0
             self.cube_solution_index = 0
-            self.flat_figure = go.Figure()
+            self.flat_figure_light = go.Figure()
+            self.flat_figure_dark = go.Figure()
             self.cube_figure = go.Figure()
             self.solving_flat = False
             self.solving_cube = False
@@ -282,7 +296,8 @@ class SolverState(rx.State):
             self.cube_solution_count = 0
             self.flat_solution_index = 0
             self.cube_solution_index = 0
-            self.flat_figure = go.Figure()
+            self.flat_figure_light = go.Figure()
+            self.flat_figure_dark = go.Figure()
             self.cube_figure = go.Figure()
             self.flat_board_figure_light = go.Figure()
             self.flat_board_figure_dark = go.Figure()
@@ -324,8 +339,19 @@ class SolverState(rx.State):
             self.flat_solution_index = 0
             if self.flat_solution_count > 0:
                 sol = self._flat_sol_from_json(self.flat_solutions[0])
-                self.flat_figure = plot_flat_solution(
-                    board, pieces, sol, is_flipped=bool(self.puzzle_is_flipped)
+                self.flat_figure_light = plot_flat_solution(
+                    board,
+                    pieces,
+                    sol,
+                    is_flipped=bool(self.puzzle_is_flipped),
+                    theme="light",
+                )
+                self.flat_figure_dark = plot_flat_solution(
+                    board,
+                    pieces,
+                    sol,
+                    is_flipped=bool(self.puzzle_is_flipped),
+                    theme="dark",
                 )
                 # Calculate X and Y
                 flat_x = 0
@@ -340,7 +366,8 @@ class SolverState(rx.State):
                 self.flat_y = flat_y
             else:
                 self.flat_error = "No flat solutions found"
-                self.flat_figure = go.Figure()
+                self.flat_figure_light = go.Figure()
+                self.flat_figure_dark = go.Figure()
                 self.flat_x = 0
                 self.flat_y = 0
         except Exception as e:
@@ -348,7 +375,8 @@ class SolverState(rx.State):
             self.flat_solutions = []
             self.flat_solution_count = 0
             self.flat_solution_index = 0
-            self.flat_figure = go.Figure()
+            self.flat_figure_light = go.Figure()
+            self.flat_figure_dark = go.Figure()
 
         # Solve cube.
         try:
