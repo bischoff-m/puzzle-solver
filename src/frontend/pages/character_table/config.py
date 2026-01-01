@@ -117,6 +117,18 @@ def config_section() -> rx.Component:
             rx.heading("Configuration", size="5"),
             rx.spacer(),
             rx.button(
+                "Printable",
+                on_click=CharacterTableState.toggle_printable_mode,
+                variant=rx.cond(
+                    CharacterTableState.printable_mode, "solid", "outline"
+                ),
+            ),
+            rx.button(
+                "Download SVG",
+                on_click=CharacterTableState.download_svg,
+                variant="outline",
+            ),
+            rx.button(
                 "Reset",
                 on_click=CharacterTableState.reset_to_defaults,
                 variant="outline",

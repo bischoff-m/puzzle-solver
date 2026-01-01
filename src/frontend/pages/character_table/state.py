@@ -139,6 +139,7 @@ def build_character_mapping_figure(
     text: str,
     code_word: str,
     theme: str,
+    printable: bool = False,
 ) -> go.Figure:
     """Build a table-style grid showing shifts for each code word position.
 
@@ -147,7 +148,7 @@ def build_character_mapping_figure(
     Cells: shifted character (Caesar-style)
 
     The first header row shows the shift character (A, B, C, ...).
-    The second header row shows the shift index (0, 1, 2, ...).
+    The second header row shows the shift index (1, 2, 3, ...).
     """
 
     code_word = str(code_word or "").upper()
@@ -156,6 +157,9 @@ def build_character_mapping_figure(
     cell_px = 28
     gap_px = 1
     margin = dict(l=10, r=10, t=10, b=10)
+
+    if printable:
+        margin = dict(l=0, r=0, t=0, b=0)
 
     if not text:
         fig = go.Figure(
@@ -179,7 +183,7 @@ def build_character_mapping_figure(
 
     # Build a table-like grid by inserting header rows/columns.
     # grid rows = 2 (header rows) + len(alphabet)
-    # grid cols = 1 (row label col) + len(alphabet)
+    # grid cols = 1 (label col: alphabet) + len(alphabet)
     grid_rows = 2 + len(alphabet)
     grid_cols = 1 + len(alphabet)
 
@@ -187,7 +191,13 @@ def build_character_mapping_figure(
     annotations: list[dict] = []
     shapes: list[dict] = []
 
-    if theme == "dark":
+    if printable:
+        cell_bg = "rgba(255,255,255,1)"
+        label_bg = "rgba(255,255,255,1)"
+        grid_bg = "rgba(0,0,0,1)"
+        text_color = "black"
+        separator_color = "rgba(0,0,0,1)"
+    elif theme == "dark":
         cell_bg = "rgba(255,255,255,0.15)"
         label_bg = "rgba(255,255,255,0.25)"
         grid_bg = "rgba(0,0,0,1)"
@@ -218,9 +228,9 @@ def build_character_mapping_figure(
                 value = ""
             elif r == 1 and c > 0:
                 # Shift index header row.
-                value = str(c - 1)
+                value = str(c)
             elif r >= 2 and c == 0:
-                # Row label.
+                # Row alphabet label.
                 value = alphabet[r - 2]
             else:
                 base = alphabet[r - 2]
@@ -336,6 +346,8 @@ def build_character_table_figure(
     width: int,
     code_word: str,
     punch_cards: list[PunchCardConfig],
+    theme: str = "light",
+    printable: bool = False,
 ) -> go.Figure:
     width = max(1, min(200, int(width)))
     n_colors = max(1, len(str(code_word or "")))
@@ -344,6 +356,9 @@ def build_character_table_figure(
     cell_px = 28
     gap_px = 1
     margin = dict(l=10, r=10, t=10, b=10)
+
+    if printable:
+        margin = dict(l=0, r=0, t=0, b=0)
 
     chars = list(text)
     if not chars:
@@ -404,94 +419,183 @@ def build_character_table_figure(
     annotations: list[dict] = []
     shapes: list[dict] = []
 
-    colors = ["rgba(255,255,255,1)"] + [
-        _hex_to_rgba(c, alpha=0.5) for c in palette
-    ]
+    if printable:
+        colors = ["rgba(255,255,255,1)"] * (n_colors + 2)
+        grid_bg = "rgba(0,0,0,1)"
+        label_text_color = "black"
+        data_text_color = "black"
+        separator_color = "rgba(0,0,0,1)"
+    else:
+        # Normal version: restore old colors for data, transparent for labels
+        # z=0: transparent (labels)
+        # z=1: white (base)
+        # z=2..: palette
+        colors = ["rgba(0,0,0,0)", "rgba(255,255,255,1)"] + [
+            _hex_to_rgba(c, alpha=0.5) for c in palette
+        ]
+        grid_bg = "rgba(255,255,255,1)" if theme == "light" else "rgba(0,0,0,1)"
+        label_text_color = "black" if theme == "light" else "white"
+        data_text_color = "black"
+        separator_color = (
+            "rgba(0,0,0,0.4)" if theme == "light" else "rgba(255,255,255,0.4)"
+        )
     colorscale = _discrete_colorscale(colors)
 
-    for row in range(n_rows):
+    # grid rows = 1 (header row) + n_rows
+    # grid cols = 1 (label col) + n_cols
+    grid_rows = 1 + n_rows
+    grid_cols = 1 + n_cols
+
+    for r in range(grid_rows):
         z_row: list[int] = []
-        for col in range(n_cols):
-            linear = row * n_cols + col
-            v = padded[linear]
+        for c in range(grid_cols):
+            is_label_cell = r == 0 or c == 0
 
-            # If a punch card reveals this cell, override the displayed character
-            # with the punch-card word Caesar-shifted by card.shift.
-            for card in punch_cards:
-                if not bool(card.is_active):
-                    continue
-                px, py = _card_pos(card)
-                punch_col = px - 1
-                punch_row = py - 1
-                m, mh = _card_info(card)
-                mr = row - punch_row
-                mc = col - punch_col
-                if (
-                    0 <= mr < mask_rows
-                    and 0 <= mc < mask_cols
-                    and int(m[mr, mc]) == 1
-                ):
-                    # Fill the card's holes starting at top-left,
-                    # padding with spaces if the word is shorter.
-                    hole_idx = int(mh[mr, mc])
-                    w = str(card.word or "").upper()
-                    wc = w[hole_idx] if hole_idx < len(w) else " "
-                    v = _caesar_shift_char(wc, shift=int(card.shift))
-                    break
-
-            if v == "":
-                z_row.append(0)
+            if r == 0 and c == 0:
+                value = ""
+            elif r == 0 and c > 0:
+                value = str(c)
+            elif r > 0 and c == 0:
+                value = str(r)
             else:
-                z_row.append((linear % n_colors) + 1)
+                # Data cell
+                row = r - 1
+                col = c - 1
+                linear = row * n_cols + col
+                value = padded[linear]
+
+                # If a punch card reveals this cell, override the displayed character
+                # with the punch-card word Caesar-shifted by card.shift.
+                for card in punch_cards:
+                    if not bool(card.is_active):
+                        continue
+                    px, py = _card_pos(card)
+                    punch_col = px - 1
+                    punch_row = py - 1
+                    m, mh = _card_info(card)
+                    mr = row - punch_row
+                    mc = col - punch_col
+                    if (
+                        0 <= mr < mask_rows
+                        and 0 <= mc < mask_cols
+                        and int(m[mr, mc]) == 1
+                    ):
+                        # Fill the card's holes starting at top-left,
+                        # padding with spaces if the word is shorter.
+                        hole_idx = int(mh[mr, mc])
+                        w = str(card.word or "").upper()
+                        wc = w[hole_idx] if hole_idx < len(w) else " "
+                        value = _caesar_shift_char(wc, shift=int(card.shift))
+                        break
+
+            if is_label_cell:
+                z_row.append(0)
+            elif value == "":
+                z_row.append(1)
+            else:
+                row = r - 1
+                col = c - 1
+                linear = row * n_cols + col
+                z_row.append((linear % n_colors) + 2)
+
+            if value != "":
                 annotations.append(
                     dict(
-                        x=col,
-                        y=row,
-                        text=v,
+                        x=c,
+                        y=r,
+                        text=value,
                         showarrow=False,
-                        font=dict(size=14, color="black", family="Poppins"),
+                        font=dict(
+                            size=14,
+                            color=label_text_color
+                            if is_label_cell
+                            else data_text_color,
+                            family="Poppins",
+                        ),
                     )
                 )
 
             # Highlight punch-mask hits (union of active punch cards) by
             # whitening the background.
-            for card in punch_cards:
-                if not bool(card.is_active):
-                    continue
-                px, py = _card_pos(card)
-                # Positions are 1-based to match the user's expectation.
-                punch_col = px - 1
-                punch_row = py - 1
-                m, _ = _card_info(card)
-                mr = row - punch_row
-                mc = col - punch_col
-                if (
-                    0 <= mr < mask_rows
-                    and 0 <= mc < mask_cols
-                    and int(m[mr, mc]) == 1
-                ):
-                    shapes.append(
-                        dict(
-                            type="rect",
-                            xref="x",
-                            yref="y",
-                            x0=col - 0.5,
-                            x1=col + 0.5,
-                            y0=row - 0.5,
-                            y1=row + 0.5,
-                            line=dict(color="rgba(0,0,0,1)", width=3),
-                            fillcolor="rgba(255,255,255,0.3)",
+            if not printable and not is_label_cell:
+                row = r - 1
+                col = c - 1
+                for card in punch_cards:
+                    if not bool(card.is_active):
+                        continue
+                    px, py = _card_pos(card)
+                    # Positions are 1-based to match the user's expectation.
+                    punch_col = px - 1
+                    punch_row = py - 1
+                    m, _ = _card_info(card)
+                    mr = row - punch_row
+                    mc = col - punch_col
+                    if (
+                        0 <= mr < mask_rows
+                        and 0 <= mc < mask_cols
+                        and int(m[mr, mc]) == 1
+                    ):
+                        shapes.append(
+                            dict(
+                                type="rect",
+                                xref="x",
+                                yref="y",
+                                x0=c - 0.5,
+                                x1=c + 0.5,
+                                y0=r - 0.5,
+                                y1=r + 0.5,
+                                line=dict(color="rgba(0,0,0,1)", width=3),
+                                fillcolor="rgba(255,255,255,0.3)",
+                            )
                         )
-                    )
-                    break
+                        break
 
         z.append(z_row)
 
+    # Thicker borders separating labels (top row + left col) from data cells.
+    bar_half = 0.04
+    # Vertical separator between label column (c=0) and data columns.
+    shapes.append(
+        dict(
+            type="rect",
+            xref="x",
+            yref="y",
+            x0=0.5 - bar_half,
+            x1=0.5 + bar_half,
+            y0=-0.5,
+            y1=grid_rows - 0.5,
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            fillcolor=separator_color,
+            layer="above",
+        )
+    )
+    # Horizontal separator between header row (r=0) and data rows.
+    shapes.append(
+        dict(
+            type="rect",
+            xref="x",
+            yref="y",
+            x0=-0.5,
+            x1=grid_cols - 0.5,
+            y0=0.5 - bar_half,
+            y1=0.5 + bar_half,
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            fillcolor=separator_color,
+            layer="above",
+        )
+    )
+
     fig_width = (
-        margin["l"] + margin["r"] + n_cols * cell_px + (n_cols - 1) * gap_px
+        margin["l"]
+        + margin["r"]
+        + grid_cols * cell_px
+        + (grid_cols - 1) * gap_px
     )
     fig_height = (
-        margin["t"] + margin["b"] + n_rows * cell_px + (n_rows - 1) * gap_px
+        margin["t"]
+        + margin["b"]
+        + grid_rows * cell_px
+        + (grid_rows - 1) * gap_px
     )
 
     fig = go.Figure(
@@ -515,20 +619,22 @@ def build_character_table_figure(
         height=fig_height,
         annotations=annotations,
         shapes=shapes,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor=grid_bg,
         font=dict(family="Poppins"),
     )
     fig.update_xaxes(
         showticklabels=False,
         showgrid=False,
         zeroline=False,
-        range=[-0.5, n_cols - 0.5],
+        range=[-0.5, grid_cols - 0.5],
         constrain="domain",
     )
     fig.update_yaxes(
         showticklabels=False,
         showgrid=False,
         zeroline=False,
-        range=[n_rows - 0.5, -0.5],
+        range=[grid_rows - 0.5, -0.5],
         scaleanchor="x",
         scaleratio=1,
     )
@@ -563,10 +669,12 @@ class CharacterTableState(rx.State):
     code_word: str = ""
     show_encrypted: bool = False
     vigenere_backward: bool = False
+    printable_mode: bool = False
 
     punch_cards: list[PunchCardConfig] = []
 
-    figure: go.Figure = go.Figure()
+    figure_light: go.Figure = go.Figure()
+    figure_dark: go.Figure = go.Figure()
     mapping_figure_light: go.Figure = go.Figure()
     mapping_figure_dark: go.Figure = go.Figure()
 
@@ -589,22 +697,51 @@ class CharacterTableState(rx.State):
             if bool(self.show_encrypted)
             else processed
         )
-        self.figure = build_character_table_figure(
+        self.figure_light = build_character_table_figure(
             text=display,
             width=self.table_width,
             code_word=self.code_word,
             punch_cards=self.punch_cards,
+            theme="light",
+            printable=bool(self.printable_mode),
+        )
+        self.figure_dark = build_character_table_figure(
+            text=display,
+            width=self.table_width,
+            code_word=self.code_word,
+            punch_cards=self.punch_cards,
+            theme="dark",
+            printable=bool(self.printable_mode),
         )
         self.mapping_figure_light = build_character_mapping_figure(
             text=processed,
             code_word=self.code_word,
             theme="light",
+            printable=bool(self.printable_mode),
         )
         self.mapping_figure_dark = build_character_mapping_figure(
             text=processed,
             code_word=self.code_word,
             theme="dark",
+            printable=bool(self.printable_mode),
         )
+
+    @rx.event
+    def toggle_printable_mode(self):
+        self.printable_mode = not self.printable_mode
+        self._rebuild()
+
+    @rx.event
+    def download_svg(self):
+        # Character table (use light version for SVG)
+        ct_svg = self.figure_light.to_image(format="svg")
+        # Mapping table (use light version for SVG)
+        mt_svg = self.mapping_figure_light.to_image(format="svg")
+
+        return [
+            rx.download(data=ct_svg, filename="character_table.svg"),
+            rx.download(data=mt_svg, filename="shift_table.svg"),
+        ]
 
     @staticmethod
     def _cards_to_jsonable(
