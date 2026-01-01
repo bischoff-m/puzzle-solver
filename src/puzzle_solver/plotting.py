@@ -402,10 +402,18 @@ def plot_piece_rotations_sides(
         for k in range(4):  # 4 rotations -> 4 output rows
             y0 = k * (1 + rot_gap)
 
+            # Display convention: the row labels (↑ → ↓ ←) refer to the piece's
+            # original North/East/South/West side strips. Since rotate_grid()
+            # rotates clockwise, we rotate counter-clockwise here so that:
+            # k=1 shows the original East (→) strip and k=3 shows original West (←).
+            k_display = (-k) % 4
+
             # Rotate grid and side dots
-            rotated_grid = rotate_grid(p.grid, k)
+            rotated_grid = rotate_grid(p.grid, k_display)
             if p.dots_side_grid:
-                rotated_side_grid = rotate_side_grid(p.dots_side_grid, k)
+                rotated_side_grid = rotate_side_grid(
+                    p.dots_side_grid, k_display
+                )
             else:
                 rotated_side_grid = [[(0, 0, 0, 0)] * 4 for _ in range(4)]
 
