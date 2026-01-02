@@ -140,6 +140,7 @@ def build_character_mapping_figure(
     code_word: str,
     theme: str,
     printable: bool = False,
+    export: bool = False,
 ) -> go.Figure:
     """Build a table-style grid showing shifts for each code word position.
 
@@ -192,9 +193,14 @@ def build_character_mapping_figure(
     shapes: list[dict] = []
 
     if printable:
-        cell_bg = "rgba(255,255,255,1)"
-        label_bg = "rgba(255,255,255,1)"
-        grid_bg = "rgba(0,0,0,1)"
+        if export:
+            cell_bg = "rgba(0,0,0,0)"
+            label_bg = "rgba(0,0,0,0)"
+            grid_bg = "rgba(0,0,0,0)"
+        else:
+            cell_bg = "rgba(255,255,255,1)"
+            label_bg = "rgba(255,255,255,1)"
+            grid_bg = "rgba(0,0,0,1)"
         text_color = "black"
         separator_color = "rgba(0,0,0,1)"
     elif theme == "dark":
@@ -248,6 +254,36 @@ def build_character_mapping_figure(
                     )
                 )
         z.append(z_row)
+
+    if printable and export:
+        # Add horizontal lines
+        for r in range(grid_rows + 1):
+            shapes.append(
+                dict(
+                    type="line",
+                    xref="x",
+                    yref="y",
+                    x0=-0.5,
+                    x1=grid_cols - 0.5,
+                    y0=r - 0.5,
+                    y1=r - 0.5,
+                    line=dict(color="black", width=1),
+                )
+            )
+        # Add vertical lines
+        for c in range(grid_cols + 1):
+            shapes.append(
+                dict(
+                    type="line",
+                    xref="x",
+                    yref="y",
+                    x0=c - 0.5,
+                    x1=c - 0.5,
+                    y0=-0.5,
+                    y1=grid_rows - 0.5,
+                    line=dict(color="black", width=1),
+                )
+            )
 
     # Thicker borders separating labels (top rows + left col) from data cells.
     # Use filled rectangles (same style as punch-card highlighting) so they
@@ -348,6 +384,7 @@ def build_character_table_figure(
     punch_cards: list[PunchCardConfig],
     theme: str = "light",
     printable: bool = False,
+    export: bool = False,
 ) -> go.Figure:
     width = max(1, min(200, int(width)))
     n_colors = max(1, len(str(code_word or "")))
@@ -420,8 +457,12 @@ def build_character_table_figure(
     shapes: list[dict] = []
 
     if printable:
-        colors = ["rgba(255,255,255,1)"] * (n_colors + 2)
-        grid_bg = "rgba(0,0,0,1)"
+        if export:
+            colors = ["rgba(0,0,0,0)"] * (n_colors + 2)
+            grid_bg = "rgba(0,0,0,0)"
+        else:
+            colors = ["rgba(255,255,255,1)"] * (n_colors + 2)
+            grid_bg = "rgba(0,0,0,1)"
         label_text_color = "black"
         data_text_color = "black"
         separator_color = "rgba(0,0,0,1)"
@@ -551,6 +592,36 @@ def build_character_table_figure(
                         break
 
         z.append(z_row)
+
+    if printable and export:
+        # Add horizontal lines
+        for r in range(grid_rows + 1):
+            shapes.append(
+                dict(
+                    type="line",
+                    xref="x",
+                    yref="y",
+                    x0=-0.5,
+                    x1=grid_cols - 0.5,
+                    y0=r - 0.5,
+                    y1=r - 0.5,
+                    line=dict(color="black", width=1),
+                )
+            )
+        # Add vertical lines
+        for c in range(grid_cols + 1):
+            shapes.append(
+                dict(
+                    type="line",
+                    xref="x",
+                    yref="y",
+                    x0=c - 0.5,
+                    x1=c - 0.5,
+                    y0=-0.5,
+                    y1=grid_rows - 0.5,
+                    line=dict(color="black", width=1),
+                )
+            )
 
     # Thicker borders separating labels (top row + left col) from data cells.
     bar_half = 0.04
@@ -733,10 +804,37 @@ class CharacterTableState(rx.State):
 
     @rx.event
     def download_svg(self):
-        # Character table (use light version for SVG)
-        ct_svg = self.figure_light.to_image(format="svg")
-        # Mapping table (use light version for SVG)
-        mt_svg = self.mapping_figure_light.to_image(format="svg")
+        processed = preprocess_text(self.text)
+        display = (
+            vigenere_encrypt(
+                processed,
+                code_word=self.code_word,
+                backward=bool(self.vigenere_backward),
+            )
+            if bool(self.show_encrypted)
+            else processed
+        )
+
+        # Build export-specific figures (transparent background, explicit grid lines)
+        ct_fig = build_character_table_figure(
+            text=display,
+            width=self.table_width,
+            code_word=self.code_word,
+            punch_cards=self.punch_cards,
+            theme="light",
+            printable=bool(self.printable_mode),
+            export=True,
+        )
+        mt_fig = build_character_mapping_figure(
+            text=processed,
+            code_word=self.code_word,
+            theme="light",
+            printable=bool(self.printable_mode),
+            export=True,
+        )
+
+        ct_svg = ct_fig.to_image(format="svg")
+        mt_svg = mt_fig.to_image(format="svg")
 
         return [
             rx.download(data=ct_svg, filename="character_table.svg"),
